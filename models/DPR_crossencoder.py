@@ -1,30 +1,23 @@
-class DPRCrossencoder:
-    def __init__(self) -> None:
-        pass
-    
-    def build_index(self, dataset):
-        """
-        @param dataset: The dataset for which an index containing embeddings should be built.
-        """
-        raise NotImplementedError
-    
-    def load_index(self, index_path: str):
-        """
-        @param index_path: The path to the pre-computed index.
-        """
-        raise NotImplementedError
+from models.dpr import DPR
+from sentence_transformers import CrossEncoder
 
-    def embed_query(self, query: str):
-        """
-        @param query: The input text for which relevant passages should be found.
-        returns: An embedding of the query.
-        """
-        raise NotImplementedError
-
-    def lookup(self, query: str, k: int, linkage_function):
+class DPRCrossencoder(DPR):
+    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = "cross-encoder/stsb-roberta-large", n: int = 25) -> None:
+        self.crossencoder = CrossEncoder(model_name)
+        self.n = n
+        super(DPRCrossencoder, self).__init__(documents, index_path)
+        
+    def Lookup(self, query: str, k: int, n: int = None):
         """
         @param query: The input text to which relevant passages should be found.
         @param k: The number of relevant passages to retrieve.
-        @param linkage_function: The function which should 
+        @param n: The number of documents to include in reranking.
         """
-        raise NotImplementedError
+        if n is None:
+            n = self.n
+        query_embedding = self.EmbedQuery(query)
+        ranked_documents = sorted(self.index.GetDocuments(), key=lambda d: self.CosineSimilarity(d.GetEmbedding(), query_embedding), reverse=True)
+        ranked_documents = ranked_documents[:min(n,len(ranked_documents))]
+        reranked_scores = self.crossencoder.predict([(document.GetText(),query) for document in ranked_documents])
+        reranked_documents = [d for _,d in sorted(zip(reranked_scores,ranked_documents), reverse=True)]
+        return reranked_documents[:min(k,len(ranked_documents))]
