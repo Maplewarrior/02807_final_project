@@ -1,2 +1,3 @@
 venv/
 datasets/
+__pycache__/
