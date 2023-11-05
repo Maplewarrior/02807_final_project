@@ -8,20 +8,20 @@ class BM25(Retriever):
         self.coprus_vocabulary = self.GetCorpusVocabulary()
         self.idf = self.GetInverseDocumentFrequencies()
         self.tfidf_vectors = self.GetDocumentsTFIDFVectors()
-        
+    
     def PreprocessText(self, text: str):
         to_removes = [".",",","?","!",":",";"]
         for to_remove in to_removes:
             text = text.replace(to_remove, "")
         text = text.lower()
         return text.split(" ")
-        
+    
     def GetQueryVocabulary(self, query: str):
         return list(set(self.PreprocessText(query)))
-        
+    
     def GetDocumentVocabulary(self, document: Document):
         return list(set(self.PreprocessText(document.GetText())))
-        
+    
     def GetCorpusVocabulary(self):
         coprus_vocabulary = set()
         for document in self.index.GetDocuments():

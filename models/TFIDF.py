@@ -8,7 +8,7 @@ class TFIDF(Retriever):
         self.coprus_vocabulary = self.GetCorpusVocabulary()
         self.idf = self.GetInverseDocumentFrequencies()
         self.tfidf_vectors = self.GetDocumentsTFIDFVectors()
-        
+    
     def PreprocessText(self, text: str):
         to_removes = [".",",","?","!",":",";"]
         for to_remove in to_removes:

@@ -7,3 +7,6 @@ class EmbeddingDataset(Dataset):
     
     def __BuildDocuments(self, documents):
         return [EmbeddingDocument(document["text"], document["id"]) for i,document in enumerate(documents)]
+    
+    def GetDim(self):
+        return len(self.documents[0].GetEmbedding())
