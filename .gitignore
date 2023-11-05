@@ -1,3 +1,5 @@
 venv/
 datasets/
 __pycache__/
+data/
+__pycache__
