@@ -2,4 +2,6 @@ venv/
 datasets/
 __pycache__/
 data/
-__pycache__
+
+# Ignore all pycache folders
+**/__pycache__/
