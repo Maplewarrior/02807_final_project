@@ -5,7 +5,7 @@ class Dataset:
         self.documents = self.__BuildDocuments(documents)
         
     def __BuildDocuments(self, documents):
-        return [Document(document["text"], document["id"]) for i,document in enumerate(documents)]
+        return [Document(document["text"], document["_id"]) for i,document in enumerate(documents)]
     
     def GetDocuments(self):
         return self.documents
