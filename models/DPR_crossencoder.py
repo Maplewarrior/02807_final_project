@@ -1,4 +1,4 @@
-from models.dpr import DPR
+from models.DPR import DPR
 from sentence_transformers import CrossEncoder
 
 class DPRCrossencoder(DPR):
