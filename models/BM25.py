@@ -1,10 +1,13 @@
 from data.document import Document
 from models.builers.retriever import Retriever
 import numpy as np
+from models.tfidf import TFIDF
 
-class BM25(Retriever):
+class BM25(TFIDF):
     def __init__(self, documents: list[dict] = None, index_path: str = None, k1: float = 1.5, b: float = 0.75) -> None:
         super(BM25, self).__init__(documents, index_path)
+        self.k1 = k1
+        self.b = b
         self.coprus_vocabulary = self.GetCorpusVocabulary()
         self.idfs = self.GetInverseDocumentFrequencies()
         self.document_lengths, self.average_document_length = self.GetDocumentLengths()

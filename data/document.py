@@ -1,12 +1,12 @@
 
 class Document:
-    def __init__(self, title: str, text: str, id: str) -> None:
+    def __init__(self, title: str, text: str, _id: str) -> None:
         self.title = title
         self.text = text
-        self.id = id
+        self._id = _id
         
     def GetId(self):
-        return self.id
+        return self._id
     
     def GetText(self):
         return self.title + " " + self.text
