@@ -78,7 +78,6 @@ class CureCluster:
             observation.Shrink(self.centroid, shrinkage_fraction)
             
     def __AssignRepresentativePoints(self):
-        # return random.choices(self.observations, k = int(min(self.n, len(self.observations))))
         max_distance_sorted_observations = sorted(self.observations, key=lambda obs: self.GetDistanceToCentroid(obs), reverse=False)
         return max_distance_sorted_observations[:int(min(self.n, len(self.observations)))]
     

@@ -17,7 +17,7 @@ class TFIDF(Retriever):
         return text.split(" ")
         
     def GetQueryVocabulary(self, query: str):
-        return list(set(self.PreprocessText(query)))
+        return self.PreprocessText(query)
         
     def GetDocumentVocabulary(self, document: Document):
         return list(set(self.PreprocessText(document.GetText())))

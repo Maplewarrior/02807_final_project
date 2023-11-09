@@ -1,13 +1,25 @@
 from data.document import Document
 from models.builers.retriever import Retriever
-
+import numpy as np
 
 class BM25(Retriever):
     def __init__(self, documents: list[dict] = None, index_path: str = None, k1: float = 1.5, b: float = 0.75) -> None:
         super(BM25, self).__init__(documents, index_path)
         self.coprus_vocabulary = self.GetCorpusVocabulary()
-        self.idf = self.GetInverseDocumentFrequencies()
-        self.tfidf_vectors = self.GetDocumentsTFIDFVectors()
+        self.idfs = self.GetInverseDocumentFrequencies()
+        self.document_lengths, self.average_document_length = self.GetDocumentLengths()
+        self.tfs = self.GetTermFrequencies()
+        self.k1 = k1
+        self.b = b
+        
+    def GetDocumentLengths(self):
+        document_lengths = {}
+        average_document_length = 0
+        for document in self.index.GetDocuments():
+            length = len(self.GetTotalVocabulary(document.GetText()))
+            document_lengths[document] = length
+            average_document_length += length
+        return document_lengths, average_document_length/len(self.index.GetDocuments())
     
     def PreprocessText(self, text: str):
         to_removes = [".",",","?","!",":",";"]
@@ -16,8 +28,8 @@ class BM25(Retriever):
         text = text.lower()
         return text.split(" ")
     
-    def GetQueryVocabulary(self, query: str):
-        return list(set(self.PreprocessText(query)))
+    def GetTotalVocabulary(self, string: str):
+        return self.PreprocessText(string)
     
     def GetDocumentVocabulary(self, document: Document):
         return list(set(self.PreprocessText(document.GetText())))
@@ -42,23 +54,22 @@ class BM25(Retriever):
             idfs[term] = np.log(n_documents / (df + 1))
         return idfs
     
-    def GetDocumentsTFIDFVectors(self):
-        tfidf_vectors = []
+    def GetTermFrequencies(self):
+        tfs: dict[Document, dict[str, int]] = {}
         for document in self.index.GetDocuments():
             document_terms = self.GetDocumentVocabulary(document)
-            tfidf_vector = []
+            tfs[document] = {}
             for term in self.coprus_vocabulary:
-                tf = document_terms.count(term) / len(document_terms)
-                tfidf = tf * self.idf[term]
-                tfidf_vector.append(tfidf)
-            tfidf_vectors.append(tfidf_vector)
-        return tfidf_vectors
+                tfs[document][term] = document_terms.count(term)
+        return tfs
     
     def CalculateScores(self, query: str):
-        scores = [0 for _ in self.tfidf_vectors]
-        query_vocabulary = self.GetQueryVocabulary(query)
-        for i, term in enumerate(self.coprus_vocabulary):
-            if term in query_vocabulary:
-                for j,tfidf_vector in enumerate(self.tfidf_vectors):
-                    scores[j] += tfidf_vector[i]
+        scores = [0 for _ in self.index.GetDocuments()]
+        query_vocabulary = self.GetTotalVocabulary(query)
+        for term in query_vocabulary:
+            if term in self.coprus_vocabulary:
+                for i, document in enumerate(self.index.GetDocuments()):
+                    scores[i] += (self.idfs[term] * 
+                                (self.tfs[document][term] * (self.k1 + 1)) / 
+                                (self.tfs[document][term] + self.k1 * (1 - self.b + self.b*(self.document_lengths[document] / self.average_document_length))))
         return scores
