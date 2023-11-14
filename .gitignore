@@ -4,3 +4,5 @@ __pycache__/
 
 # Ignore all pycache folders
 **/__pycache__/
+
+pickled_models/

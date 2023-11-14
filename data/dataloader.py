@@ -1,11 +1,13 @@
 import json
 import os
 import pathlib, os, requests, zipfile, io
+import csv
 
 class Data():
     def __init__(self, config_parser):
         self.dataset_urls = dict(config_parser['DATASETS'])
         self.dataset_path = config_parser['PATHS']['datasets']
+        
         
     def load_jsonl(self, path):
         """Load a jsonl file.
@@ -32,10 +34,39 @@ class Data():
         corpus_path = os.path.join(path, 'corpus.jsonl')
         queries_path = os.path.join(path, 'queries.jsonl')
         print(corpus_path)
-        corpus = self.load_jsonl(corpus_path)
-        queries = self.load_jsonl(queries_path)
-        return corpus, queries
+        self.corpus = self.load_jsonl(corpus_path)
+        self.queries = self.load_jsonl(queries_path)
+        return self.corpus, self.queries
     
+    def convert_to_dict(self, list_of_dicts):
+        """
+        Convert a list of dictionaries to a dictionary keyed by '_id'.
+
+        Args:
+            list_of_dicts (list): List of dictionaries, each containing an '_id' key.
+
+        Returns:
+            dict: Dictionary where each key is an '_id' and its value is the corresponding dictionary.
+        """
+        return {item['_id']: item for item in list_of_dicts}
+
+
+    def get_corpus(self):
+        """Return the loaded corpus.
+        
+        Returns:
+            corpus (list[dict]): The corpus of the dataset.
+        """
+        return self.convert_to_dict(self.corpus)
+
+    def get_queries(self):
+        """Return the loaded queries.
+        
+        Returns:
+            queries (list[dict]): The queries of the dataset.
+        """
+        return self.convert_to_dict(self.queries)
+
     def check_dataset(self, dataset_name):
         """Check if the dataset with the folder name is already downloaded.
         
@@ -112,3 +143,33 @@ class Data():
         # Returning the corpus and queries
         print("\nLoading dataset from {}".format(os.path.join(self.dataset_path, dataset_name)))
         return self.load_data(os.path.join(self.dataset_path, dataset_name))
+
+
+    def get_relevants(self, dataset_name):
+        """Get the ground truth for the queries.
+        
+        Returns:
+            ground_truth (dict): The ground truth for the queries.
+        """
+        ground_truth = {}
+
+        # check if dataset_name is in config
+        if not self.check_dataset(dataset_name):
+            print("\nDataset not found. Calling get_dataset()...")
+            self.get_dataset(dataset_name)
+            
+        tsv_file_path = os.path.join(self.dataset_path, f'{dataset_name}/qrels/train.tsv')
+
+        with open(tsv_file_path, 'r', encoding='utf-8') as file:
+            reader = csv.reader(file, delimiter='\t')
+            next(reader, None)  # Skip the header
+
+            for row in reader:
+                query_id, corpus_id, score = row
+                if query_id not in ground_truth:
+                    ground_truth[query_id] = []
+                ground_truth[query_id].append((corpus_id, int(score)))
+
+        return ground_truth
+        
+        
