@@ -7,7 +7,8 @@ class Data():
     def __init__(self, config_parser):
         self.dataset_urls = dict(config_parser['DATASETS'])
         self.dataset_path = config_parser['PATHS']['datasets']
-        
+        if not os.path.exists(self.dataset_path):
+            os.mkdir(self.dataset_path)
         
     def load_jsonl(self, path):
         """Load a jsonl file.
@@ -173,3 +174,6 @@ class Data():
         return ground_truth
         
         
+if __name__ == '__main__':
+    D = Data()
+    D.download_dataset()
