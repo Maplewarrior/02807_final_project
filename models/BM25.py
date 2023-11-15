@@ -22,7 +22,7 @@ class BM25(TFIDF):
         # self.corpus_vocabulary = self.GetCorpusVocabulary() # Already Calculated
         # self.idfs = self.GetInverseDocumentFrequencies() # Already Calculated
         self.document_lengths, self.average_document_length = self.GetDocumentLengths()
-        self.tfs = self.GetTermFrequencies()
+        self.bm25_vectors = self.GetDocumentBM25Vectors()
         self.k1 = k1
         self.b = b
     
@@ -69,19 +69,25 @@ class BM25(TFIDF):
                     term_idx = term_to_index[term]
                     enum = self.idf.get(term, 0) * count * (self.k1 + 1)
                     denom = count + self.k1 * (1- self.b + self.b * doc_factor)
-
                     bm25_matrix[doc_idx, term_idx] = enum/denom
         
-        return bm25_matrix.tocsr()
+        return bm25_vectors.tocsr()
 
-    
     def CalculateScores(self, query: str):
-        scores = [0 for _ in self.index.GetDocuments()]
-        query_vocabulary = self.GetDocWords(query)
-        for term in query_vocabulary:
-            if term in self.corpus_vocabulary:
-                for i, document in enumerate(self.index.GetDocuments()):
-                    scores[i] += (self.idfs[term] * 
-                                (self.tfs[document][term] * (self.k1 + 1)) / 
-                                (self.tfs[document][term] + self.k1 * (1 - self.b + self.b*(self.document_lengths[document] / self.average_document_length))))
+        scores = [0 for _ in self.tfidf_vectors]
+        query_vocabulary = self.GetQueryVocabulary(query)
+        for i, term in enumerate(self.corpus_vocabulary):
+            if term in query_vocabulary:
+                for j,tfidf_vector in enumerate(self.bm25_matrix):
+                    scores[j] += tfidf_vector[i]
         return scores
+    # def CalculateScores(self, query: str):
+    #     scores = [0 for _ in self.index.GetDocuments()]
+    #     query_vocabulary = self.GetDocWords(query)
+    #     for term in query_vocabulary:
+    #         if term in self.corpus_vocabulary:
+    #             for i, document in enumerate(self.index.GetDocuments()):
+    #                 scores[i] += (self.idfs[term] * 
+    #                             (self.tfs[document][term] * (self.k1 + 1)) / 
+    #                             (self.tfs[document][term] + self.k1 * (1 - self.b + self.b*(self.document_lengths[document] / self.average_document_length))))
+    #     return scores
