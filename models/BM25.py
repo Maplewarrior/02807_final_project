@@ -74,31 +74,6 @@ class BM25(TFIDF):
         
         return bm25_matrix.tocsr()
     
-   
-    @time_func
-    def QueryToVector(self, query: str):
-        """ Convert a query to a vector
-        
-        Args:
-            query (str): The query to convert
-        
-        Returns:
-            csr_matrix: A sparse vector representation of the query
-        """
-        # Preprocess the query and get term counts
-        query_terms = self.PreprocessText(query)
-        term_freq = Counter(query_terms)
-
-        # Create an empty LIL matrix for the query vector
-        query_vector = lil_matrix((1, len(self.corpus_vocabulary)), dtype=np.float32)
-
-        # Fill the vector with term frequencies
-        for term, count in term_freq.items():
-            if term in self.term_to_index:
-                query_vector[0, self.term_to_index[term]] = count
-
-        # Convert to CSR format for efficient multiplication
-        return query_vector.tocsr()
 
     @time_func
     def CalculateScores(self, query: str):
