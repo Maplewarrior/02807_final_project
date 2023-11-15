@@ -4,6 +4,7 @@ import numpy as np
 from models.TFIDF import TFIDF
 import time
 from scipy.sparse import lil_matrix
+from collections import Counter
 
 def time_func(func):
   def wrapper(*args, **kwargs):
@@ -22,7 +23,7 @@ class BM25(TFIDF):
         # self.corpus_vocabulary = self.GetCorpusVocabulary() # Already Calculated
         # self.idfs = self.GetInverseDocumentFrequencies() # Already Calculated
         self.document_lengths, self.average_document_length = self.GetDocumentLengths()
-        self.bm25_vectors = self.GetDocumentBM25Vectors()
+        self.bm25_matrix = self.GetDocumentBM25Vectors()
         self.k1 = k1
         self.b = b
     
@@ -41,7 +42,6 @@ class BM25(TFIDF):
     
     @time_func
     def GetTermFrequencies(self):
-        [document]
         tfs: dict[Document, dict[str, int]] = {}
         for document in self.index.GetDocuments():
             document_terms = self.GetDocumentVocabulary(document)
@@ -53,7 +53,7 @@ class BM25(TFIDF):
     @time_func
     def GetDocumentBM25Vectors(self):
         self.idf # Inverse Document Frequencies
-        term_to_index = {term: idx for idx, term in enumerate(self.corpus_vocabulary)}
+        self.term_to_index = {term: idx for idx, term in enumerate(self.corpus_vocabulary)}
         # Initialize a sparse matrix
         n_documents = len(self.index.GetDocuments())
         n_terms = len(self.corpus_vocabulary)
@@ -65,29 +65,53 @@ class BM25(TFIDF):
             doc_factor = self.document_lengths[document] / self.average_document_length # |D_j| / D_avg
 
             for term, count in document_terms.items():
-                if term in term_to_index:
-                    term_idx = term_to_index[term]
+                if term in self.term_to_index:
+                    term_idx = self.term_to_index[term]
                     enum = self.idf.get(term, 0) * count * (self.k1 + 1)
                     denom = count + self.k1 * (1- self.b + self.b * doc_factor)
+
                     bm25_matrix[doc_idx, term_idx] = enum/denom
         
-        return bm25_vectors.tocsr()
+        return bm25_matrix.tocsr()
+    
+   
+    @time_func
+    def QueryToVector(self, query: str):
+        """ Convert a query to a vector
+        
+        Args:
+            query (str): The query to convert
+        
+        Returns:
+            csr_matrix: A sparse vector representation of the query
+        """
+        # Preprocess the query and get term counts
+        query_terms = self.PreprocessText(query)
+        term_freq = Counter(query_terms)
 
+        # Create an empty LIL matrix for the query vector
+        query_vector = lil_matrix((1, len(self.corpus_vocabulary)), dtype=np.float32)
+
+        # Fill the vector with term frequencies
+        for term, count in term_freq.items():
+            if term in self.term_to_index:
+                query_vector[0, self.term_to_index[term]] = count
+
+        # Convert to CSR format for efficient multiplication
+        return query_vector.tocsr()
+
+    @time_func
     def CalculateScores(self, query: str):
-        scores = [0 for _ in self.tfidf_vectors]
-        query_vocabulary = self.GetQueryVocabulary(query)
-        for i, term in enumerate(self.corpus_vocabulary):
-            if term in query_vocabulary:
-                for j,tfidf_vector in enumerate(self.bm25_matrix):
-                    scores[j] += tfidf_vector[i]
+        """Calculate scores for a query
+        
+        Args:
+            query (str): The query to calculate scores for
+        
+        Returns:
+            np.array: An array of scores for each document
+        """
+        # Convert the query to a vector
+        query_vector = self.QueryToVector(query)
+        # Maybe we should calculate dot product in batches
+        scores = self.bm25_matrix.dot(query_vector.T).toarray().flatten()
         return scores
-    # def CalculateScores(self, query: str):
-    #     scores = [0 for _ in self.index.GetDocuments()]
-    #     query_vocabulary = self.GetDocWords(query)
-    #     for term in query_vocabulary:
-    #         if term in self.corpus_vocabulary:
-    #             for i, document in enumerate(self.index.GetDocuments()):
-    #                 scores[i] += (self.idfs[term] * 
-    #                             (self.tfs[document][term] * (self.k1 + 1)) / 
-    #                             (self.tfs[document][term] + self.k1 * (1 - self.b + self.b*(self.document_lengths[document] / self.average_document_length))))
-    #     return scores

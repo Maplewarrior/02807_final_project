@@ -1,7 +1,6 @@
 from data.document import Document
 from models.builers.retriever import Retriever
 import numpy as np
-import pdb
 import time
 from scipy.sparse import lil_matrix
 from collections import Counter
@@ -20,7 +19,10 @@ class TFIDF(Retriever):
         super(TFIDF, self).__init__(documents, index_path)
         self.corpus_vocabulary = self.GetCorpusVocabulary()
         self.idf = self.GetInverseDocumentFrequencies()
-        self.tfidf_vectors = self.GetDocumentsTFIDFVectors()
+
+        # Only run if we are in TFIDF class
+        if type(self) == TFIDF:
+            self.tfidf_matrix = self.GetDocumentsTFIDFVectors()
 
     def PreprocessText(self, text: str):
         """
@@ -73,7 +75,7 @@ class TFIDF(Retriever):
     @time_func
     def GetDocumentsTFIDFVectors(self):
         # Create a mapping from terms to indices
-        term_to_index = {term: idx for idx, term in enumerate(self.corpus_vocabulary)}
+        self.term_to_index = {term: idx for idx, term in enumerate(self.corpus_vocabulary)}
 
         # Initialize a sparse matrix
         n_documents = len(self.index.GetDocuments())
@@ -85,21 +87,52 @@ class TFIDF(Retriever):
             max_freq = max(document_terms.values(), default=1)
 
             for term, count in document_terms.items():
-                if term in term_to_index:
+                if term in self.term_to_index:
                     # Calculate TF
                     tf = count / max_freq
                     # Retrieve the index of the term and update the matrix
-                    term_idx = term_to_index[term]
+                    term_idx = self.term_to_index[term]
                     tfidf_matrix[doc_idx, term_idx] = tf * self.idf.get(term, 0)
         
         return tfidf_matrix.tocsr()   # Convert to CSR format for efficient row slicing
     
-    def CalculateScores(self, query: str):
-        scores = [0 for _ in self.tfidf_vectors]
-        query_vocabulary = self.GetQueryVocabulary(query)
-        for i, term in enumerate(self.coprus_vocabulary):
-            if term in query_vocabulary:
-                for j,tfidf_vector in enumerate(self.tfidf_vectors):
-                    scores[j] += tfidf_vector[i]
-        return scores
+    @time_func
+    def QueryToVector(self, query: str):
+        """ Convert a query to a vector
+        
+        Args:
+            query (str): The query to convert
+        
+        Returns:
+            csr_matrix: A sparse vector representation of the query
+        """
+        # Preprocess the query and get term counts
+        query_terms = self.PreprocessText(query)
+        term_freq = Counter(query_terms)
 
+        # Create an empty LIL matrix for the query vector
+        query_vector = lil_matrix((1, len(self.corpus_vocabulary)), dtype=np.float32)
+
+        # Fill the vector with term frequencies
+        for term, count in term_freq.items():
+            if term in self.term_to_index:
+                query_vector[0, self.term_to_index[term]] = count
+
+        # Convert to CSR format for efficient multiplication
+        return query_vector.tocsr()
+
+    @time_func
+    def CalculateScores(self, query: str):
+        """Calculate scores for a query
+        
+        Args:
+            query (str): The query to calculate scores for
+        
+        Returns:
+            np.array: An array of scores for each document
+        """
+        # Convert the query to a vector
+        query_vector = self.QueryToVector(query)
+        # Maybe we should calculate dot product in batches
+        scores = self.tfidf_matrix.dot(query_vector.T).toarray().flatten()
+        return scores
