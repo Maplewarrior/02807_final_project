@@ -3,6 +3,7 @@ import pickle
 from data.dataset import Dataset
 import numpy as np
 from numpy.linalg import norm
+import os
 
 class Retriever(ABC):
     def __init__(self, documents: list[dict] = None, index_path: str = None) -> None:
@@ -31,6 +32,8 @@ class Retriever(ABC):
         """
         @param index_path: The path to save the pre-computed index.
         """
+        if not os.path.exists(os.path.dirname(index_path)):
+            os.makedirs(os.path.dirname(index_path))
         file = open(index_path, 'wb')
         pickle.dump(self.index, file)
         file.close()

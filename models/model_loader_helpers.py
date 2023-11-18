@@ -2,7 +2,10 @@
 import csv
 import os
 
-def create_models(documents, dataset_name, models = {"TF-IDF": {}}, save = True):
+def createModels(documents, 
+                  dataset_name, models = {"TF-IDF": {}}, 
+                  save = True,
+                  embedding_index_path: str = None):
     import pickle
     from models.builers.retriever import Retriever
 
@@ -19,23 +22,22 @@ def create_models(documents, dataset_name, models = {"TF-IDF": {}}, save = True)
         elif model_name == "DPR":
             print("Creating DPR model")
             from models.DPR import DPR
-            models_[model_name] = DPR(documents=documents, **models[model_name])
+            models_[model_name] = DPR(documents=documents, **models[model_name], index_path=embedding_index_path)
         elif model_name == "Crossencoder":
             print("Crossencoder model")
             from models.DPR_crossencoder import DPRCrossencoder
-            models_[model_name] = DPRCrossencoder(documents=documents, **models[model_name])
+            models_[model_name] = DPRCrossencoder(documents=documents, **models[model_name], index_path=embedding_index_path)
         elif model_name == "KMeans":
             print("KMeans model")
             from models.k_means import KMeans
-            models_[model_name] = KMeans(documents=documents, **models[model_name])
+            models_[model_name] = KMeans(documents=documents, **models[model_name], index_path=embedding_index_path)
         elif model_name == "CURE":
             print("CURE model")
             from models.CURE import CURE
-            models_[model_name] = CURE(documents=documents, **models[model_name])
+            models_[model_name] = CURE(documents=documents, **models[model_name], index_path=embedding_index_path)
         else:
             raise Exception(f"Model '{model_name}' not implemented")
             
-
         if save: 
             if not os.path.exists(f"models/pickled_models/{dataset_name}"):
                 print("Creating directory: models/pickled_models")
@@ -54,7 +56,7 @@ def create_models(documents, dataset_name, models = {"TF-IDF": {}}, save = True)
                 pickle.dump(models_[model_name] , f)
     return models_
 
-def load_models(dataset_name, models={"TF-IDF":{}}):
+def loadModels(dataset_name, models={"TF-IDF":{}}):
     import pickle
 
     models_ = {}

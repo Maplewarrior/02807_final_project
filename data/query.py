@@ -8,11 +8,11 @@ class Query:
         self.id = id
         self.relevant_document_ids = relevant_document_ids
         
-    def GetQuery(self):
+    def getQuery(self):
         return self.text
     
-    def GetNumberOfRelevantDocuments(self):
+    def getNumberOfRelevantDocuments(self):
         return len(self.relevant_document_ids)
     
-    def IsDocumentRelevant(self, document: Document):
+    def isDocumentRelevant(self, document: Document):
         return document.GetId() in self.relevant_document_ids

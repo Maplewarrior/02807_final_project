@@ -9,7 +9,8 @@ class DPR(DenseRetriever):
         super(DPR, self).__init__(documents, index_path)
 
     def EmbedQuery(self, query: str):
-        input_ids = self.tokenizer.encode(query, add_special_tokens=True)
+        input_ids = self.tokenizer.encode(query, add_special_tokens=True, 
+                                            max_length=512, truncation=True)
         input_ids = torch.tensor([input_ids])
         with torch.no_grad():
             last_hidden_states = self.model(input_ids)[0]
