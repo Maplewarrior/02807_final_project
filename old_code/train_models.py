@@ -1,14 +1,14 @@
-from data.dataloader import Data
+from data.dataloader import DataLoader
 import configparser
 
 # load config.ini 
 config = configparser.ConfigParser()
 config.read('config.ini')
-data_handler = Data(config)
+data_handler = DataLoader(config)
 dataset = "fiqa"
 corpus, queries = data_handler.get_dataset(dataset)
 
-from models.model_loader_helpers import create_models
+from models.model_loader_helpers import createModels
 
 models_to_create = {"TF-IDF": {},
                     "BM25": {},
@@ -19,4 +19,4 @@ models_to_create = {"TF-IDF": {},
 
 documents = corpus
 
-create_models(documents=documents, dataset_name=dataset, models=models_to_create, save=True)
+createModels(documents=documents, dataset_name=dataset, models=models_to_create, save=True)

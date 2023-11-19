@@ -3,7 +3,7 @@ import os
 import pathlib, os, requests, zipfile, io
 import csv
 
-class Data():
+class DataLoader():
     def __init__(self, config_parser):
         self.dataset_urls = dict(config_parser['DATASETS'])
         self.dataset_path = config_parser['PATHS']['datasets']
@@ -175,5 +175,5 @@ class Data():
         
         
 if __name__ == '__main__':
-    D = Data()
+    D = DataLoader()
     D.download_dataset()
