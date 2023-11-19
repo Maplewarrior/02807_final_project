@@ -3,9 +3,10 @@ import csv
 import os
 
 def createModels(documents, 
-                  dataset_name, models = {"TF-IDF": {}}, 
-                  save = True,
-                  embedding_index_path: str = None):
+                 dataset_name, models = {"TF-IDF": {}}, 
+                 save = True,
+                 embedding_index_path: str = None):
+    
     import pickle
     from models.builers.retriever import Retriever
 
@@ -58,7 +59,6 @@ def createModels(documents,
 
 def loadModels(dataset_name, models={"TF-IDF":{}}):
     import pickle
-
     models_ = {}
     for model_name in list(models.keys()):
         s = [f"{k}{v}" for k, v in models[model_name].items()]

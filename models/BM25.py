@@ -5,15 +5,7 @@ from models.TFIDF import TFIDF
 import time
 from scipy.sparse import lil_matrix
 from collections import Counter
-
-def time_func(func):
-  def wrapper(*args, **kwargs):
-    start = time.time()
-    out = func(*args, **kwargs)
-    end = time.time()
-    print(f"{func.__name__} Elapsed: {(end-start)}s")
-    return out
-  return wrapper
+from models.misc import time_func
 
 class BM25(TFIDF):
     def __init__(self, documents: list[dict] = None, index_path: str = None, k1: float = 1.5, b: float = 0.75) -> None:
@@ -75,7 +67,7 @@ class BM25(TFIDF):
         return bm25_matrix.tocsr()
     
 
-    @time_func
+    #@time_func
     def CalculateScores(self, query: str):
         """Calculate scores for a query
         

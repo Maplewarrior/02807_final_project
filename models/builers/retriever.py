@@ -26,6 +26,7 @@ class Retriever(ABC):
         file = open(index_path, 'rb')
         index = pickle.load(file)
         file.close()
+        
         return index
     
     def SaveIndex(self, index_path: str):
@@ -39,17 +40,23 @@ class Retriever(ABC):
         file.close()
         
     def CosineSimilarity(self, vector_1: list[float], vector_2: list[float]):
-        return np.dot(vector_1,vector_2)/(norm(vector_1)*norm(vector_2) + 1e-10)
-        
+        return np.dot(vector_1, vector_2)/(norm(vector_1)*norm(vector_2) + 1e-10)
+
+    def InnerProduct(self, matrix_1, matrix_2):
+        """
+        Cosine similarity becomes an inner product because vectors are normalized!
+        """
+        return matrix_1 @ matrix_2
+
     @abstractmethod
     def CalculateScores(self, query: str):
         raise NotImplementedError("Must overwrite")
     
-    def Lookup(self, query: str, k: int):
+    def Lookup(self, queries: list[str], k: int):
         """
-        @param query: The input text to which relevant passages should be found.
-        @param k: The number of relevant passages to retrieve.
+        @param queries: The input text(s) to which relevant passages should be found.
+        @param k: The number of relevant passages to retrieve for each input query.
         """
-        scores = self.CalculateScores(query)
-        ranked_documents = [d for _, d in sorted(zip(scores, self.index.GetDocuments()), key=lambda pair: pair[0], reverse=True)]
-        return ranked_documents[:min(k,len(ranked_documents))]
+        scores = self.CalculateScores(queries)
+        ranked_documents = [[d for _, d in sorted(zip(query_scores, self.index.GetDocuments()), key=lambda pair: pair[0], reverse=True)] for query_scores in scores]
+        return [ranked_document[:min(k, len(ranked_documents[0]))] for ranked_document in ranked_documents]

@@ -4,15 +4,7 @@ import numpy as np
 import time
 from scipy.sparse import lil_matrix
 from collections import Counter
-
-def time_func(func):
-  def wrapper(*args, **kwargs):
-    start = time.time()
-    out = func(*args, **kwargs)
-    end = time.time()
-    print(f"{func.__name__} Elapsed: {(end-start)}s")
-    return out
-  return wrapper
+from models.misc import time_func
 
 class TFIDF(Retriever):
     def __init__(self, documents: list[dict] = None, index_path: str = None) -> None:
@@ -96,7 +88,7 @@ class TFIDF(Retriever):
         
         return tfidf_matrix.tocsr()   # Convert to CSR format for efficient row slicing
     
-    @time_func
+    #@time_func
     def QueryToVector(self, query: str):
         """ Convert a query to a vector
         
@@ -121,7 +113,7 @@ class TFIDF(Retriever):
         # Convert to CSR format for efficient multiplication
         return query_vector.tocsr()
 
-    @time_func
+    #@time_func
     def CalculateScores(self, query: str):
         """Calculate scores for a query
         
