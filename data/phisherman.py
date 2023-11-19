@@ -76,4 +76,6 @@ def LoadPhishingDataset(path: str = "datasets/Phishing_Email.csv") -> PhishingDa
     return phishing_dataset
 
 if __name__ == "__main__":
-    LoadPhishingDataset()
+    df = pd.read_csv("datasets/Phishing_Email.csv").drop(columns=["Unnamed: 0"])
+    # check balance in labels
+    print(df["Email Type"].value_counts())
