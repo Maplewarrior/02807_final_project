@@ -38,7 +38,7 @@ class PhishingDataset:
                             label = document["Email Type"],
                             Id = _))
             except ValueError:
-                print("Wops, missing value in a document.")
+                print(f"Could not create PhishingEmail from {document}")
 
         return docs
          
