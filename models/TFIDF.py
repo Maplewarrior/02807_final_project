@@ -89,7 +89,7 @@ class TFIDF(Retriever):
         return tfidf_matrix.tocsr()   # Convert to CSR format for efficient row slicing
     
     #@time_func
-    def QueryToVector(self, query: str):
+    def QueryToVector(self, queries: list[str]):
         """ Convert a query to a vector
         
         Args:
@@ -99,22 +99,23 @@ class TFIDF(Retriever):
             csr_matrix: A sparse vector representation of the query
         """
         # Preprocess the query and get term counts
-        query_terms = self.PreprocessText(query)
-        term_freq = Counter(query_terms)
+        query_terms_batched = [self.PreprocessText(query) for query in queries]
+        term_freqs = [Counter(query_terms) for query_terms in query_terms_batched]
 
-        # Create an empty LIL matrix for the query vector
-        query_vector = lil_matrix((1, len(self.corpus_vocabulary)), dtype=np.float32)
+        # Create an empty sparse matrix for the query vectors
+        query_vector = lil_matrix((len(queries), len(self.corpus_vocabulary)), dtype=np.float32)
 
-        # Fill the vector with term frequencies
-        for term, count in term_freq.items():
-            if term in self.term_to_index:
-                query_vector[0, self.term_to_index[term]] = count
+        for i in range(len(queries)):
+            # Fill the vector with term frequencies
+            for term, count in term_freqs[i].items():
+                if term in self.term_to_index:
+                    query_vector[i, self.term_to_index[term]] = count
 
         # Convert to CSR format for efficient multiplication
         return query_vector.tocsr()
 
     #@time_func
-    def CalculateScores(self, query: str):
+    def CalculateScores(self, queries: list[str]):
         """Calculate scores for a query
         
         Args:
@@ -123,8 +124,9 @@ class TFIDF(Retriever):
         Returns:
             np.array: An array of scores for each document
         """
-        # Convert the query to a vector
-        query_vector = self.QueryToVector(query)
-        # Maybe we should calculate dot product in batches
-        scores = self.tfidf_matrix.dot(query_vector.T).toarray().flatten()
+        # Convert the queries to a vector
+        query_vectors = self.QueryToVector(queries)
+        
+        # scores = self.tfidf_matrix.dot(query_vectors.T).toarray()
+        scores = query_vectors.dot(self.tfidf_matrix.T).toarray()
         return scores

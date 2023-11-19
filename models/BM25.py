@@ -67,8 +67,8 @@ class BM25(TFIDF):
         return bm25_matrix.tocsr()
     
 
-    #@time_func
-    def CalculateScores(self, query: str):
+    def CalculateScores(self, queries: list[str]):
+        import pdb
         """Calculate scores for a query
         
         Args:
@@ -77,8 +77,9 @@ class BM25(TFIDF):
         Returns:
             np.array: An array of scores for each document
         """
-        # Convert the query to a vector
-        query_vector = self.QueryToVector(query)
-        # Maybe we should calculate dot product in batches
-        scores = self.bm25_matrix.dot(query_vector.T).toarray().flatten()
+        query_vector = self.QueryToVector(queries)
+        # scores = self.bm25_matrix.dot(query_vector.T).toarray().flatten()
+        scores = query_vector.dot(self.bm25_matrix.T).toarray()
+        pdb.set_trace()
+        print(scores.shape)
         return scores
