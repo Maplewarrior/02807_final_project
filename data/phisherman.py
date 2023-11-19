@@ -5,9 +5,25 @@ OogaBooga script to load the phishing dataset
 from pydantic import BaseModel
 from typing import List, Optional
 import pandas as pd
+import re
 
 # We get the phishing data on the form:
 # ,Email Text,Email Type
+
+def clean_text(text) -> str:
+    """ Clean the text of the email """
+    # remove everything that is not a letter or a space
+    if not isinstance(text, str):
+        return ""
+    text = re.sub(r"[^a-zA-Z ]", "", text)
+    # remove multiple spaces
+    text = re.sub(r" +", " ", text)
+    # remove leading and trailing spaces
+    text = text.strip()
+    # make everything lowercase
+    text = text.lower()
+    return text
+
 
 class PhishingEmail(BaseModel):
     """ Check if email_text is str else convert to str """
@@ -33,12 +49,9 @@ class PhishingDataset:
     def __BuildDocuments(self, documents):
         docs = []
         for _, document in enumerate(documents):
-            try:
-                docs.append(PhishingEmail(text=document["Email Text"],
-                            label = document["Email Type"],
-                            Id = _))
-            except ValueError:
-                print(f"Could not create PhishingEmail from {document}")
+            docs.append(PhishingEmail(text=clean_text(document["Email Text"]),
+                        label = document["Email Type"],
+                        Id = _))
 
         return docs
          
@@ -48,7 +61,11 @@ class PhishingDataset:
     def __getitem__(self, key):
         return self.documents[key]
     
+    def __len__(self):
+        return len(self.documents)
+    
     def getRelatedDocuments(self, document):
+
         """ We define relevant documents as documents with the same label,
         except for the document itself """
         return [doc for doc in self.documents if doc.label == document.label and doc.text != document.text]
@@ -59,5 +76,4 @@ def LoadPhishingDataset(path: str = "datasets/Phishing_Email.csv") -> PhishingDa
     return phishing_dataset
 
 if __name__ == "__main__":
-    phishing_dataset = LoadPhishingDataset()
-    print(phishing_dataset[0].Id)
+    LoadPhishingDataset()
