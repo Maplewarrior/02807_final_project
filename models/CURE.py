@@ -20,28 +20,52 @@ class CURE(DenseRetriever):
             last_hidden_states = self.model(input_ids)[0]
         last_hidden_states = last_hidden_states.mean(1)
         return last_hidden_states[0].numpy()
+
+    def EmbedQueries(self, queries: list[str]):
+        """
+        Batched version of EmbedQuery
+            - Embeddings returned are normalized!
+        """
+        tokenized_queries = self.tokenizer(queries, add_special_tokens=True, 
+                                           padding=True, max_length=512, 
+                                           truncation=True, return_tensors='pt').to(self.device)
+        # model inference
+        with torch.no_grad():
+            last_hidden_states = self.model(**tokenized_queries)[0]
+        # average embedding over tokens
+        last_hidden_states = last_hidden_states.mean(1).cpu().numpy()
+        # Normalize embeddings
+        norms = np.linalg.norm(last_hidden_states, ord=2, axis=1)[:, None] # compute norms for batch and unsqueeze 2nd dim
+        return last_hidden_states / norms # returns [Batch_size x 768]
     
     def __CreateClusters(self, k: int, n: int, shrinkage_fraction: float):
         clusters = CureClusterCollection(k, n, shrinkage_fraction, self.index.GetDocuments())
         clusters.Compute()
         return clusters
     
-    def CalculateScores(self, query: str):
-        query_embedding = self.EmbedQuery(query)
-        cluster_documents = self.clusters.GetMostSimilarCluster(query_embedding).GetDocuments()
-        scores = [self.CosineSimilarity(d.GetEmbedding(), query_embedding) for d in cluster_documents]
+    def CalculateScores(self, queries: list[str]):
+        query_embeddings = self.EmbedQueries(queries)
+        cluster_documents = [self.clusters.GetMostSimilarCluster(query_embedding).GetDocuments() for query_embedding in query_embeddings]
+        scores = [[self.InnerProduct(query_embedding, d.GetEmbedding()) for d in cluster_documents[i]] for i, query_embedding in enumerate(query_embeddings)]
         return scores, cluster_documents
+        # query_embedding = self.EmbedQuery(query)
+        # cluster_documents = self.clusters.GetMostSimilarCluster(query_embedding).GetDocuments()
+        # scores = [self.CosineSimilarity(d.GetEmbedding(), query_embedding) for d in cluster_documents]
+        # return scores, cluster_documents
     
-    def Lookup(self, query: str, k: int):
+    def Lookup(self, queries: list[str], k: int):
         """
         @param query: The input text to which relevant passages should be found.
         @param k: The number of relevant passages to retrieve.
         """
-        scores, cluster_documents = self.CalculateScores(query)
-        ranked_documents = [d for _, d in sorted(zip(scores, cluster_documents), key=lambda pair: pair[0], reverse=True)]
-        return ranked_documents[:min(k,len(ranked_documents))]
+        scores, cluster_documents = self.CalculateScores(queries)
+        score_document_pairs = [list(zip(scores[i], cluster_documents[i])) for i in range(len(queries))]
+        ranked_documents_batch = [[d for _, d in sorted(pairs, key=lambda pair: pair[0], reverse=True)] for pairs in score_document_pairs]
+        return [ranked_documents[:min(k, len(ranked_documents))] for ranked_documents in ranked_documents_batch]
+        # scores, cluster_documents = self.CalculateScores(query)
+        # ranked_documents = [d for _, d in sorted(zip(scores, cluster_documents), key=lambda pair: pair[0], reverse=True)]
+        # return ranked_documents[:min(k,len(ranked_documents))]
     
-
 class CureObservation:
     def __init__(self, document: EmbeddingDocument) -> None:
         self.document = document
@@ -152,7 +176,9 @@ class CureClusterCollection:
         return len(self.clusters)
     
     def Compute(self):
+        print(f'Computing {self.k} CURE clusteres')
         while self.GetNumberOfClusters() > self.k:
+            print(f'N clusters: {self.GetNumberOfClusters()}')
             merge_cluster_one, merge_cluster_two = self.GetMergeObservations()
             merge_cluster_one.Merge(merge_cluster_two, self.shrinkage_fraction)
             self.clusters.remove(merge_cluster_two)

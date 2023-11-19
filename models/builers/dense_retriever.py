@@ -4,7 +4,6 @@ from data.embedding_dataset import EmbeddingDataset
 from models.builers.retriever import Retriever
 from models.misc import time_func, batch
 
-import torch
 class DenseRetriever(Retriever, ABC):
     def __init__(self, documents: list[dict] = None, index_path: str = None, batch_size: int = 100) -> None:
         print("DENSE RETRIEVER IDX PATH: ", index_path)
@@ -60,7 +59,6 @@ class DenseRetriever(Retriever, ABC):
     #     scores = [self.CosineSimilarity(d.GetEmbedding().squeeze(1), query_embedding) for d in self.index.GetDocuments()]
     #     return scores
 
-    @time_func
     def CalculateScores(self, queries: list[str]):
         query_embeddings = self.EmbedQueries(queries)
         scores = [[self.InnerProduct(query_embedding, d.GetEmbedding()) for d in self.index.GetDocuments()] for query_embedding in query_embeddings]
