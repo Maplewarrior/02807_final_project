@@ -5,7 +5,7 @@ from models.TFIDF import TFIDF
 import time
 from scipy.sparse import lil_matrix
 from collections import Counter
-from models.misc import time_func
+from utils.misc import time_func
 
 class BM25(TFIDF):
     def __init__(self, documents: list[dict] = None, index_path: str = None, k1: float = 1.5, b: float = 0.75) -> None:
@@ -68,7 +68,6 @@ class BM25(TFIDF):
     
 
     def CalculateScores(self, queries: list[str]):
-        import pdb
         """Calculate scores for a query
         
         Args:
@@ -78,8 +77,5 @@ class BM25(TFIDF):
             np.array: An array of scores for each document
         """
         query_vector = self.QueryToVector(queries)
-        # scores = self.bm25_matrix.dot(query_vector.T).toarray().flatten()
         scores = query_vector.dot(self.bm25_matrix.T).toarray()
-        pdb.set_trace()
-        print(scores.shape)
         return scores

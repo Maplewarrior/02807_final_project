@@ -4,7 +4,7 @@ import numpy as np
 import time
 from scipy.sparse import lil_matrix
 from collections import Counter
-from models.misc import time_func
+from utils.misc import time_func
 
 class TFIDF(Retriever):
     def __init__(self, documents: list[dict] = None, index_path: str = None) -> None:

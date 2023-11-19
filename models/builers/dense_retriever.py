@@ -2,7 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from data.embedding_dataset import EmbeddingDataset
 from models.builers.retriever import Retriever
-from models.misc import time_func, batch
+from utils.misc import time_func, batch
 
 class DenseRetriever(Retriever, ABC):
     def __init__(self, documents: list[dict] = None, index_path: str = None, batch_size: int = 100) -> None:

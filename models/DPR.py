@@ -2,7 +2,7 @@ from models.builers.dense_retriever import DenseRetriever
 from transformers import BertModel, BertTokenizer
 import torch
 import numpy as np
-from models.misc import time_func
+from utils.misc import time_func
 
 class DPR(DenseRetriever):
     def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = 'bert-base-uncased', batch_size: int = 100) -> None:
