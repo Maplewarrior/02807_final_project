@@ -33,6 +33,7 @@ class Retriever(ABC):
         """
         @param index_path: The path to save the pre-computed index.
         """
+        #self.index.embedding_matrix = None # TEST whether embedding matrix is the one which fills memory
         if not os.path.exists(os.path.dirname(index_path)):
             os.makedirs(os.path.dirname(index_path))
         file = open(index_path, 'wb')

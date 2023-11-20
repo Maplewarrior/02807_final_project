@@ -1,48 +1,57 @@
-import numpy as np
+import torch
 from abc import ABC, abstractmethod
 from data.embedding_dataset import EmbeddingDataset
 from models.builers.retriever import Retriever
+# from transformers import BertModel, BertTokenizer
+from transformers import MPNetTokenizer, MPNetModel
 from utils.misc import time_func, batch
 
 class DenseRetriever(Retriever, ABC):
-    def __init__(self, documents: list[dict] = None, index_path: str = None, batch_size: int = 100) -> None:
-        print("DENSE RETRIEVER IDX PATH: ", index_path)
+    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = None, batch_size: int = None) -> None:
+        self.device = ('cuda' if torch.cuda.is_available() else 'cpu')
         self.batch_size = batch_size
-        if not index_path is None:
+        self.__InitRetrievalModels(model_name)
+
+        if not index_path is None: # load index if previously saved
             super(DenseRetriever, self).__init__(documents, index_path)
-        else:
-            self.index = self.__BuildIndex(documents)
+            self.index.GetEmbeddingMatrix() # initialize embedding matrix
+            self.index.embedding_matrix = self.index.embedding_matrix.to(self.device) # send to device
+            print(f'Embedding matrix initialized to {self.device}!')
         
-        self.index.GetEmbeddingMatrix() # initialize embedding matrix
+        else: # build index
+            self.index = self.__BuildIndex(documents)
+
     
+    def __InitRetrievalModels(self, model_name):
+        print("Initializing retrieval model!")
+        # self.tokenizer = BertTokenizer.from_pretrained(model_name)
+        # self.model = BertModel.from_pretrained(model_name).to(self.device)
+        self.tokenizer = MPNetTokenizer.from_pretrained(model_name)
+        self.model = MPNetModel.from_pretrained(model_name).to(self.device)
+        self.model.eval()
+
+    @time_func
     def __BuildIndex(self, documents: list[dict]):
         """
-        Batched version of __BuildIndex
+        Function that precomputes embeddings for an EmbeddingDocument
+            - Inference is run on GPU.
+            - Vectors are converted to numpy arrays prior to saving the index to reduce memory consumption.
         """
         
         index = EmbeddingDataset(documents) # initialize index
-        count = 0
-        print(f'Building embedding index using device {self.device}. Running this on GPU is strongly adviced!')
+        itercount = 0
+        print(f'Building embedding index using device: {self.device}. Running this on GPU is strongly adviced!')
         # add embeddings
         for documents in batch(index.GetDocuments(), self.batch_size):
-            embeddings = self.EmbedQueries([doc.GetText() for doc in documents]) # [batch_size x 768]
+            embeddings = self.EmbedQueries([doc.GetText() for doc in documents]).cpu().unsqueeze(2).numpy() # [batch_size x emebedding_dim x 1]
             for j, document in enumerate(documents):
-                document.SetEmbedding(embeddings[j][:, None]) # save embeddings to index
-            
-            # verbosity
-            count += self.batch_size
-            if count % 5000 == 0:
-                print(f'iter: {count}/{len(index.GetDocuments())}')
-    
-        return index
+                document.SetEmbedding(embeddings[j]) # save embeddings to index
 
-    @abstractmethod
-    def EmbedQuery(self, query: str):
-        """
-        @param query: The input text for which relevant passages should be found.
-        returns: An embedding of the query.
-        """
-        raise NotImplementedError("Must overwrite")
+            itercount += self.batch_size
+            if itercount % 5000 == 0:
+                print(f'iter: {itercount}/{len(index.GetDocuments())}')
+
+        return index
     
     @abstractmethod
     def EmbedQueries(self, queries: str):
@@ -52,14 +61,20 @@ class DenseRetriever(Retriever, ABC):
         """
         raise NotImplementedError("Must overwrite")
     
-    # @time_func
-    # def CalculateScores(self, query: str):
-    #     print("DPR CalcScores")
-    #     query_embedding = self.EmbedQuery(query)
-    #     scores = [self.CosineSimilarity(d.GetEmbedding().squeeze(1), query_embedding) for d in self.index.GetDocuments()]
-    #     return scores
-
+    def mean_pooling(self, model_output, attention_mask):
+            token_embeddings = model_output.last_hidden_state
+            input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+            return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+    
+    def cls_pooling(self, model_output):
+        return model_output.last_hidden_state[:,0]
+    
+    #@time_func
     def CalculateScores(self, queries: list[str]):
+        # import pdb
+        # pdb.set_trace()
         query_embeddings = self.EmbedQueries(queries)
-        scores = [[self.InnerProduct(query_embedding, d.GetEmbedding()) for d in self.index.GetDocuments()] for query_embedding in query_embeddings]
+        # scores = [[self.InnerProduct(query_embedding, d.GetEmbedding()) for d in self.index.GetDocuments()] for query_embedding in query_embeddings]
+        scores = self.InnerProduct(query_embeddings, self.index.embedding_matrix).cpu()
+        scores = [score.tolist() for score in scores]
         return scores

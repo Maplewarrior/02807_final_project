@@ -87,7 +87,7 @@ class PhishingDataset:
         except for the document itself """
         return [doc for doc in self.documents if doc.label == document.label and doc.text != document.text]
 
-def LoadPhishingDataset(path: str = "datasets/Phishing_Email.csv") -> PhishingDataset:
+def LoadPhishingDataset(path: str = "data/datasets/Phishing_Email.csv") -> PhishingDataset:
     df = pd.read_csv(path).drop(columns=["Unnamed: 0"])
     phishing_dataset = PhishingDataset(df.to_dict("records"))
     return phishing_dataset
