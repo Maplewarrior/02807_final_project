@@ -75,6 +75,8 @@ class CURE(DenseRetriever):
     def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = 'bert-base-uncased', n_clusters: int = 2, n_representatives: int = 3, shrink_factor: float = 0.2, subsample_fraction=0.7, merge_threshold = 1, batch_size: int =1, slice_and_plot=False) -> None:
         self.device = ('cuda' if torch.cuda.is_available() else 'cpu')
         self.n_clusters = n_clusters
+        self.n_initial_clusters = n_clusters
+        self.cluster_labels = list(range(n_clusters))
         self.n_representatives = n_representatives
         self.shrink_factor = shrink_factor
         self.subsample_fraction = subsample_fraction
@@ -146,23 +148,29 @@ class CURE(DenseRetriever):
         for i, obs in enumerate(subsample):
             obs.AssignCluster(cluster_labels[i])
         
+        while True:
+            merge_done = False
+            # 3 Find representatives for each cluster
+            print(f"Finding n={self.n_representatives} representatives for each cluster")
+            representatives = self._FindRepresentatives(subsample, self.n_representatives)
 
-        # 3 Find representatives for each cluster
-        print(f"Finding n={self.n_representatives} representatives for each cluster")
-        representatives = self._FindRepresentatives(subsample, self.n_representatives)
+            # 4 Move representatives towards centroid
+            shrinked_reps = {}
+            cents = {}
+            for c, rep_cluster in representatives.items():
+                centroid = np.mean([obs.GetPoint() for obs in rep_cluster], axis=0)
+                cents[c] = centroid
+                shrinked_reps[c] = [obs.GetShrinkedCopy(centroid, self.shrink_factor) for obs in rep_cluster]
 
-        # 4 Move representatives towards centroid
-        shrinked_reps = []
-        cents = []
-        for rep_cluster in representatives:
-            centroid = np.mean([obs.GetPoint() for obs in rep_cluster], axis=0)
-            cents.append(centroid)
-            shrinked_reps.append([obs.GetShrinkedCopy(centroid, self.shrink_factor) for obs in rep_cluster])
-
-        # TODO
-        # 5. Merge clusters if representatives are closer than a threshold
-        print("Merging clusters if representatives are closer than a threshold")
-        
+            # TODO
+            # 5. Merge clusters if representatives are closer than a threshold
+            print("Merging clusters if representatives are closer than a threshold")
+            # Comparing each shrinked representaion with every other shrinked representation
+            merge_done = self.ProcessMerge(subsample, shrinked_reps)
+            # If no merge was done in this iteration, break the while loop
+            if not merge_done:  
+                break
+                            
 
         # TODO
         # Repeat 3, 4 and 5 until no more clusters are merged
@@ -180,11 +188,12 @@ class CURE(DenseRetriever):
         if self.slice_and_plot:
             # PLOTS
             cmap = plt.cm.viridis  # Choose any available colormap
-            colors = cmap(np.linspace(0, 1, self.n_clusters ))
+            colors = cmap(np.linspace(0, 1, self.n_initial_clusters))  # Generate the colors for your colormap ))
 
-            for i in range(self.n_clusters):
+            for i in self.cluster_labels:
                 points = np.array([obs.GetPoint().flatten() for obs in subsample if obs.cluster == i])
                 if len(points) > 0:
+                    pdb.set_trace()
                     plt.scatter(points[:, 0], points[:, 1],marker='o', c=[colors[i]], alpha=0.6, label=f'Cluster ({i})')
                     plt.scatter(cents[i][0], cents[i][1], label=f'Centroid ({i})', marker='P', alpha=0.8, c=[colors[i]])
 
@@ -193,14 +202,14 @@ class CURE(DenseRetriever):
             points = np.array([obs.GetPoint().flatten() for obs in self.observations if obs not in subsample])
             plt.scatter(points[:, 0], points[:, 1], c='gray', marker='x', alpha=0.5, label='Not in subsample')
             # plot representatives from each cluster
-            for i in range(self.n_clusters):
+            for i in self.cluster_labels:
                 points = np.array([obs.GetPoint().flatten() for obs in representatives[i]])
                 # plt.scatter(points[:, 0], points[:, 1], label=f'Cluster rep ({i})', marker='*', alpha=0.4, c=colors[i])
                 if len(points) > 0:
                     plt.scatter(points[:, 0], points[:, 1], label=f'Cluster rep ({i})', marker='*', alpha=0.4, c=[colors[i]])
 
             # plot shrinked representatives from each cluster
-            for i in range(self.n_clusters):
+            for i in self.cluster_labels:
                 points = np.array([obs.GetPoint().flatten() for obs in shrinked_reps[i]])
                 # plt.scatter(points[:, 0], points[:, 1], label=f'Shrinked cluster rep ({i})', marker='*', alpha=0.8, c=colors[i])
                 if len(points) > 0:
@@ -228,6 +237,37 @@ class CURE(DenseRetriever):
         # make centroids dict 
         self.centroids = {cluster: np.mean([obs.GetPoint() for obs in cluster_dict[cluster]], axis=0) for cluster in cluster_dict.keys()}
 
+    def CompareClustersMerge(self, cluster1, cluster2, threshold):
+        points1 = [observation.GetPoint() for observation in cluster1]
+        points2 = [observation.GetPoint() for observation in cluster2]
+        
+        # Compare each point in cluster1 with each point in cluster2
+        for point1 in points1:
+            for point2 in points2:
+                # Calculate cosine similarity
+                similarity = abs(self._CalculateDistance(point1, point2))
+                print(f"Similarity: {similarity}")
+                # Check if similarity is above some threshold
+                if similarity > threshold:
+                    return True
+                    print(f"Cosine similarity {similarity} between points is above the threshold of {threshold}")
+        return False
+    
+    def MergeClusters(self, subsample: list[CureObservation], c1: int, c2: int):
+        """ Merge two clusters
+        
+        Args:
+            subsample (list[CureObservation]): List of observations
+            c1 (int): Cluster label
+            c2 (int): Cluster label
+        """
+        # get clusters in c2 
+        cluster2 = [obs for obs in subsample if obs.cluster == c2]
+
+        for obs in cluster2:
+            obs.AssignCluster(c1)
+
+        return c1
 
     def GetMostSimilarCluster(self, embeddedQuery: np.array):
         """ Get most similar cluster to query.
@@ -246,6 +286,18 @@ class CURE(DenseRetriever):
 
         return closest_cluster, min_distance
 
+    def ProcessMerge(self, subsample, shrinked_reps):
+        for i in self.cluster_labels:
+            for j in self.cluster_labels:
+                if i != j and shrinked_reps[i] and shrinked_reps[j]:
+                    if self.CompareClustersMerge(shrinked_reps[i], shrinked_reps[j], self.merge_threshold):
+                        print(f"Merging clusters {i} and {j} into cluster {i}")
+                        self.MergeClusters(subsample, i, j)
+                        self.n_clusters -= 1
+                        self.cluster_labels.remove(j)
+                        return True  # Return True to indicate a merge was done
+        return False  # Return False to indicate no merge was done
+
     def CalculateScores(self, queries: list[str]):
         """ Calculate scores for each query and cluster
 
@@ -260,10 +312,12 @@ class CURE(DenseRetriever):
         cluster_documents = [self.cluster_dict[self.GetMostSimilarCluster(query_embedding)[0]] for query_embedding in query_embeddings]
         # calculate distance for each document in cluster
 
+        # Try for all documents
+        # cluster_documents = [obs]*5
+
         scores = [[self._CalculateDistance(query_embedding, doc.GetPoint()) for doc in cluster] for query_embedding, cluster in zip(query_embeddings, cluster_documents)]
         # scores = [[self.InnerProduct(query_embedding, d.GetPoint()) for d in cluster_documents[i]] for i, query_embedding in enumerate(query_embeddings)]
         return scores, cluster_documents
-
     
     def Lookup(self, queries: list[str], k: int):
         """
@@ -282,28 +336,26 @@ class CURE(DenseRetriever):
         ranked_documents_batch = [[d for _, d in sorted(pairs, key=lambda pair: pair[0], reverse=True)] for pairs in score_document_pairs]
         return [ranked_documents[:min(k, len(ranked_documents))] for ranked_documents in ranked_documents_batch]
 
-
-    def _FindClosestRepresentative(self, observation: CureObservation, representatives: list[list[CureObservation]]):
+    def _FindClosestRepresentative(self, observation: CureObservation, representatives: dict[int, list[CureObservation]]):
         """Find the closest representative to an observation
         
         Arguments:
             observation {CureObservation} -- Observation to find closest representative to
-            representatives {list[list[CureObservation]]} -- List of representatives for each cluster
+            representatives {dict[int, list[CureObservation]]} -- List of representatives for each cluster
         
         Returns:
             CureObservation -- Closest representative
         """
         max_similarity = 0
         closest_rep = None
-        for rep_cluster in representatives:
+        for c_key, rep_cluster in representatives.items():
             for rep in rep_cluster:
-                similarity = self._CalculateDistance(observation.GetPoint(), rep.GetPoint())
+                similarity = abs(self._CalculateDistance(observation.GetPoint(), rep.GetPoint()))
                 if similarity > max_similarity:
                     max_similarity = similarity
                     closest_rep = rep
 
         return closest_rep
-
 
     def _CalculateDistance(self, point1, point2):
         """Calculate the Euclidean distance between two points using NumPy. """
@@ -359,13 +411,14 @@ class CURE(DenseRetriever):
         Returns:
             list -- List of clusters
         """
-        clusters = []
-        for i in range(self.n_clusters):
+        clusters = {}
+        for i in self.cluster_labels:
             cluster = [obs for obs in subsample if obs.cluster == i]
             
             # find points furthest away from each other 
             representatives = self._FindFurthestPoints(cluster, n_representatives)
-            clusters.append(representatives)
+            clusters[i] = representatives
+            # clusters.append(representatives)
             
         
         return clusters
