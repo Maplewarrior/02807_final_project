@@ -43,7 +43,8 @@ class DenseRetriever(Retriever, ABC):
         print(f'Building embedding index using device: {self.device}. Running this on GPU is strongly adviced!')
         # add embeddings
         for documents in batch(index.GetDocuments(), self.batch_size):
-            embeddings = self.EmbedQueries([doc.GetText() for doc in documents]).cpu().unsqueeze(2).numpy() # [batch_size x emebedding_dim x 1]
+            # convert to cpu if it is a tensor else nothing
+            embeddings = self.EmbedQueries([doc.GetText() for doc in documents]).cpu().unsqueeze(2).numpy() if self.device == 'cuda' else self.EmbedQueries([doc.GetText() for doc in documents]).unsqueeze(2).numpy()
             for j, document in enumerate(documents):
                 document.SetEmbedding(embeddings[j]) # save embeddings to index
 
