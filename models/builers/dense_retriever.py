@@ -5,6 +5,7 @@ from models.builers.retriever import Retriever
 # from transformers import BertModel, BertTokenizer
 from transformers import MPNetTokenizer, MPNetModel
 from utils.misc import time_func, batch
+import numpy as np
 
 class DenseRetriever(Retriever, ABC):
     def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = None, batch_size: int = None) -> None:
@@ -44,7 +45,7 @@ class DenseRetriever(Retriever, ABC):
         # add embeddings
         for documents in batch(index.GetDocuments(), self.batch_size):
             # convert to cpu if it is a tensor else nothing
-            embeddings = self.EmbedQueries([doc.GetText() for doc in documents]).cpu().unsqueeze(2).numpy() if self.device == 'cuda' else self.EmbedQueries([doc.GetText() for doc in documents]).unsqueeze(2).numpy()
+            embeddings = self.EmbedQueries([doc.GetText() for doc in documents]).cpu().unsqueeze(2).numpy() if self.device == 'cuda' else np.expand_dims(self.EmbedQueries([doc.GetText() for doc in documents]), axis=2)
             for j, document in enumerate(documents):
                 document.SetEmbedding(embeddings[j]) # save embeddings to index
 

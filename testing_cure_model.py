@@ -23,7 +23,7 @@ from models.model_loader_helpers import createModels
 
 # models = createModels(documents=documents, dataset_name=dataset, models=models_to_create, save=True)
 from models.CURE3 import CURE
-model = CURE(documents=documents, model_name= 'bert-base-uncased', batch_size=5, n_clusters = 2, n_representatives = 2, shrink_factor = 0.3, subsample_fraction = 0.7, slice_and_plot=False, merge_threshold=0.8)
+model = CURE(documents=documents, model_name= 'bert-base-uncased', batch_size=5, n_clusters = 5, n_representatives = 2, shrink_factor = 0.3, subsample_fraction = 0.7, slice_and_plot=False, merge_threshold=0.8)
 
 # Remember it is random, so the results will be different each time
 # random 5 numbers
