@@ -23,8 +23,6 @@ class CURE(DenseRetriever):
                  batch_size: int = 5,
                  similarity_measure: str = "cosine",
                  initial_clustering_algorithm: str = "agglomerative") -> None:
-        # self.tokenizer = BertTokenizer.from_pretrained(model_name)
-        # self.model = BertModel.from_pretrained(model_name)
         self.similarity_measure = similarity_measure
         self.initial_clustering_algorithm = initial_clustering_algorithm
         super(CURE, self).__init__(documents, index_path, model_name, batch_size)
@@ -33,32 +31,6 @@ class CURE(DenseRetriever):
         end = time.time()
         print("\n\nTime", end-start, "\n\n")
         self.__CreateEmbeddingMatrices()        
-
-    # def EmbedQuery(self, query: str):
-    #     input_ids = self.tokenizer.encode(query, add_special_tokens=True, 
-    #                                         max_length=512, truncation=True)
-    #     input_ids = torch.tensor([input_ids])
-    #     with torch.no_grad():
-    #         last_hidden_states = self.model(input_ids)[0]
-    #     last_hidden_states = last_hidden_states.mean(1)
-    #     return last_hidden_states[0].numpy()
-
-    # def EmbedQueries(self, queries: list[str]):
-    #     """
-    #     Batched version of EmbedQuery
-    #         - Embeddings returned are normalized!
-    #     """
-    #     tokenized_queries = self.tokenizer(queries, add_special_tokens=True, 
-    #                                        padding=True, max_length=512, 
-    #                                        truncation=True, return_tensors='pt').to(self.device)
-    #     # model inference
-    #     with torch.no_grad():
-    #         last_hidden_states = self.model(**tokenized_queries)[0]
-    #     # average embedding over tokens
-    #     last_hidden_states = last_hidden_states.mean(1).cpu().numpy()
-    #     # Normalize embeddings
-    #     norms = np.linalg.norm(last_hidden_states, ord=2, axis=1)[:, None] # compute norms for batch and unsqueeze 2nd dim
-    #     return last_hidden_states / norms # returns [Batch_size x 768]
 
     def EmbedQueries(self, queries: list[str]):
         """
