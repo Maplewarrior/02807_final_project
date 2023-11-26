@@ -20,7 +20,6 @@ class DenseRetriever(Retriever, ABC):
         else: # build index
             self.index = self.__BuildIndex(documents)
 
-    
     def __InitRetrievalModels(self, model_name):
         print("Initializing retrieval model!")
         # self.tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -29,11 +28,12 @@ class DenseRetriever(Retriever, ABC):
             from transformers import BertModel, BertTokenizer
             self.tokenizer = BertTokenizer.from_pretrained(model_name)
             self.model = BertModel.from_pretrained(model_name).to(self.device)
+            self.model.eval()
         else:
             from transformers import MPNetTokenizer, MPNetModel
             self.tokenizer = MPNetTokenizer.from_pretrained(model_name)
             self.model = MPNetModel.from_pretrained(model_name).to(self.device)
-        self.model.eval()
+            self.model.eval()
 
     @time_func
     def __BuildIndex(self, documents: list[dict]):
@@ -42,7 +42,6 @@ class DenseRetriever(Retriever, ABC):
             - Inference is run on GPU.
             - Vectors are converted to numpy arrays prior to saving the index to reduce memory consumption.
         """
-        
         index = EmbeddingDataset(documents) # initialize index
         itercount = 0
         print(f'Building embedding index using device: {self.device}. Running this on GPU is strongly adviced!')
@@ -77,8 +76,6 @@ class DenseRetriever(Retriever, ABC):
     
     #@time_func
     def CalculateScores(self, queries: list[str]):
-        # import pdb
-        # pdb.set_trace()
         query_embeddings = self.EmbedQueries(queries)
         # scores = [[self.InnerProduct(query_embedding, d.GetEmbedding()) for d in self.index.GetDocuments()] for query_embedding in query_embeddings]
         scores = self.InnerProduct(query_embeddings, self.index.embedding_matrix).cpu()
