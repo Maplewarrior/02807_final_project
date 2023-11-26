@@ -1,7 +1,8 @@
 def createLatexTable(score_metrics: dict[str, dict[str, dict[str, float]]], 
                        caption="Experiment results.", 
                        label="tab:results-table",
-                       number_of_decimal_points: int = 4):
+                       number_of_decimal_points: int = 4,
+                       divide_factor: int = 1):
     """Prints a latex table from the scores and times dictionaries.
     
     Args:
@@ -19,9 +20,9 @@ def createLatexTable(score_metrics: dict[str, dict[str, dict[str, float]]],
     for dataset in score_metrics.keys():
         # Loop through scores for all the models 
         for i, model_name in enumerate(score_metrics[dataset].keys()):
-            precision = round(score_metrics[dataset][model_name]["precision"], number_of_decimal_points)
-            recall = round(score_metrics[dataset][model_name]["recall"], number_of_decimal_points)
-            reciprocal_rank = round(score_metrics[dataset][model_name]["reciprocal_rank"], number_of_decimal_points)
+            precision = round(score_metrics[dataset][model_name][("precision", divide_factor)], number_of_decimal_points)
+            recall = round(score_metrics[dataset][model_name][("recall", divide_factor)], number_of_decimal_points)
+            reciprocal_rank = round(score_metrics[dataset][model_name][("reciprocal_rank", divide_factor)], number_of_decimal_points)
             time = round(score_metrics[dataset][model_name]["time"], number_of_decimal_points)
 
             if i==0:
