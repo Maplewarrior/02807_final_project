@@ -9,6 +9,8 @@ import re
 import uuid
 import numpy as np
 
+np.random.seed(42) # set seed for reproducibility when shuffling data
+
 # We get the phishing data on the form:
 # ,Email Text,Email Type
 
@@ -25,7 +27,6 @@ def clean_text(text) -> str:
     # make everything lowercase
     text = text.lower()
     return text
-
 
 class PhishingEmail(BaseModel):
     """ Check if email_text is str else convert to str """
