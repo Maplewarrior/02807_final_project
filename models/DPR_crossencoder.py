@@ -13,19 +13,16 @@ class DPRCrossencoder(DPR):
         @param k: The number of relevant passages to retrieve.
         @param n: The number of documents to include in reranking.
         """
-        import time
-        import pdb
+
         if n is None:
             n = self.n
         
         ### DPR steps
-        
         scores = self.CalculateScores(queries)
         ranked_documents = [[d for _, d in sorted(zip(query_scores, self.index.GetDocuments()), key=lambda pair: pair[0], reverse=True)] for query_scores in scores]
         ranked_documents = [ranked_document[:min(n, len(ranked_documents[0]))] for ranked_document in ranked_documents]
         
         ### crossencoder steps
-        
         reranked_scores = [self.crossencoder.predict([(document.GetText(), pair[1]) for document in pair[0]]) for pair in list(zip(ranked_documents, queries))] # Batched variant
         # reranked_scores = [[self.crossencoder.predict([document.GetText(), pair[1]]) for document in pair[0]] for pair in list(zip(ranked_documents, queries))] # Unbatched variant
         reranked_scores_document_pairs = [list(zip(reranked_scores[i], ranked_documents[i])) for i in range(len(queries))]

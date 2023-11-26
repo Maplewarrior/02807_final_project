@@ -6,19 +6,12 @@ import numpy as np
 import torch
 
 class KMeans(DenseRetriever):
-    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = None, k: int = 10) -> None:        
-        super(KMeans, self).__init__(documents, index_path)
+    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = "sentence-transformers/multi-qa-mpnet-base-dot-v1", k: int = 10) -> None:        
+        super(KMeans, self).__init__(documents, index_path, model_name)
         print(f'KMeans running on: {self.device}')
         self.clusters = self.__CreateClusters(k)
-    
-    def EmbedQuery(self, query: str):
-        input_ids = self.tokenizer.encode(query, add_special_tokens=True, 
-                                            max_length=512, truncation=True)
-        input_ids = torch.tensor([input_ids])
-        with torch.no_grad():
-            last_hidden_states = self.model(input_ids)[0]
-        last_hidden_states = last_hidden_states.mean(1)
-        return last_hidden_states[0].numpy()
+        print('Creating embedding matrices for clusters!')
+        self.__CreateEmbeddingMatrices()
     
     def EmbedQueries(self, queries: list[str]):
         """
@@ -30,8 +23,8 @@ class KMeans(DenseRetriever):
                                            truncation=True, return_tensors='pt').to(self.device)
         
         # dec_input_ids = self.tokenizer.batch_decode(tokenized_queries['input_ids']) # decode to ensure sentences are encoded correctly
-
         # model inference
+
         with torch.no_grad():
             last_hidden_states = self.model(**tokenized_queries)[0]
         # average embedding over tokens
@@ -39,7 +32,6 @@ class KMeans(DenseRetriever):
         # Normalize embeddings
         norms = torch.linalg.norm(last_hidden_states, 2, dim=1, keepdim=False).unsqueeze(1) # NOTE: documentation says kwarg "ord" should be "p", but it thorws an error  
         # norms = np.linalg.norm(last_hidden_states, ord=2, axis=1)[:, None] # compute norms for batch and unsqueeze 2nd dim
-        out = last_hidden_states / norms
         return last_hidden_states / norms # returns [Batch_size x 768]
         
     def __CreateClusters(self, k: int):
@@ -47,21 +39,30 @@ class KMeans(DenseRetriever):
         if k <= len(self.index.GetDocuments()):
             clusters = ClusterCollection(k, self.index.GetDocuments())
             prev_error = np.inf
+            # tol = 1e-02
             tol = 1e-02
             while np.abs(clusters.GetError() - prev_error) > tol:
                 clusters.AssignDocuments()
                 prev_error = clusters.GetError()
                 clusters.UpdateCentroids()
                 print(f'Error difference: {np.abs(clusters.GetError() - prev_error)}')
+            
             return clusters
         else:
             raise ValueError("Cannot create more clusters, than there are documents.")
     
+    def __CreateEmbeddingMatrices(self):
+        for cluster in self.clusters.clusters:
+            cluster.GetEmbeddingMatrix()
+            cluster.embedding_matrix = cluster.embedding_matrix.to(self.device)
+        
     def CalculateScores(self, queries: list[str]):
         query_embeddings = self.EmbedQueries(queries)
-        cluster_documents = [self.clusters.GetMostSimilarCluster(query_embedding).GetDocuments() for query_embedding in query_embeddings]
-        scores = [[self.InnerProduct(query_embedding, d.GetEmbedding()) for d in cluster_documents[i]] for i, query_embedding in enumerate(query_embeddings)]
-        return scores, cluster_documents
+        most_similar_cluster = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy()) for query_embedding in query_embeddings]
+        scores = [self.InnerProduct(query_embeddings, c.embedding_matrix).cpu() for c in most_similar_cluster]
+        print(f"QE device: {query_embeddings.device}\nEmb matrix device: {most_similar_cluster[0].embedding_matrix.device}")
+        scores = [score.tolist() for score in scores]
+        return scores, [c.GetDocuments() for c in most_similar_cluster]
     
     def Lookup(self, queries: list[str], k: int):
         """
@@ -72,6 +73,9 @@ class KMeans(DenseRetriever):
         score_document_pairs = [list(zip(scores[i], cluster_documents[i])) for i in range(len(queries))]
         ranked_documents_batch = [[d for _, d in sorted(pairs, key=lambda pair: pair[0], reverse=True)] for pairs in score_document_pairs]
         return [ranked_documents[:min(k, len(ranked_documents))] for ranked_documents in ranked_documents_batch]
+        # scores = self.CalculateScores(queries)
+        # ranked_documents = [[d for _, d in sorted(zip(query_scores, self.index.GetDocuments()), key=lambda pair: pair[0], reverse=True)] for query_scores in scores]
+        # return [ranked_document[:min(k, len(ranked_documents[0]))] for ranked_document in ranked_documents]
     
 class ClusterCollection:
     def __init__(self, k: int, documents: list[EmbeddingDocument]) -> None:
@@ -140,6 +144,7 @@ class Cluster:
     def GetDistanceToCentroid(self, document: EmbeddingDocument):
         return np.sum((document.GetEmbedding()-self.centroid)**2)
     
+    ### TODO: Check if inner product performs better
     def GetDistanceToQuery(self, query_embedding: list[float]):
         return np.sum((query_embedding-self.centroid)**2)
     
@@ -151,3 +156,7 @@ class Cluster:
     
     def GetDocuments(self):
         return self.documents
+    
+    def GetEmbeddingMatrix(self):
+        emb_matrix = [torch.from_numpy(document.GetEmbedding()) for document in self.documents]
+        self.embedding_matrix = torch.cat(emb_matrix, dim=1)

@@ -22,7 +22,6 @@ class DenseRetriever(Retriever, ABC):
         else: # build index
             self.index = self.__BuildIndex(documents)
 
-    
     def __InitRetrievalModels(self, model_name):
         print("Initializing retrieval model!")
         # self.tokenizer = BertTokenizer.from_pretrained(model_name)
