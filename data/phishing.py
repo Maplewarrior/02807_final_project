@@ -7,6 +7,7 @@ from typing import List, Optional
 import pandas as pd
 import re
 import uuid
+import numpy as np
 
 # We get the phishing data on the form:
 # ,Email Text,Email Type
@@ -59,6 +60,9 @@ class PhishingDataset:
         return [PhishingEmail(text=clean_text(document["Email Text"]),
                         label = document["Email Type"],
                         Id = ids[i]) for i,document in enumerate(documents)], ids_to_labels
+        
+    def Shuffle(self):
+        np.random.shuffle(self.documents)
          
     def GetDocuments(self):
         return self.documents
