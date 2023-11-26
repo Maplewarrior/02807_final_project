@@ -5,6 +5,7 @@ import torch
 import random
 import numpy as np
 import time
+import pdb
 
 class CURE(DenseRetriever):
     def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = 'bert-base-uncased', n: int = 2, initial_clusters: int = 10, shrinkage_fraction: float = 0.2, threshold: float = 1, subsample_fraction: float = 0.5, batch_size: int = 5) -> None:
@@ -84,6 +85,9 @@ class CureObservation:
     def GetDistanceTo(self, observation):
         return np.sum((observation.GetPoint()-self.GetPoint())**2)
     
+    def GetDistanceToQuery(self, observation):
+        return np.sum((observation-self.GetPoint())**2)
+    
     def GetDocument(self):
         return self.document
 
@@ -108,13 +112,11 @@ class CureCluster:
     def RemoveObservations(self):
         self.observations = []
     
-    def __FindMostDispersedPoints(self, distance_matrix, n):
-        # Initialize variables
+    def __FindMostDispersedPoints(self, distance_matrix):
         selected_points = []
         remaining_points = set(range(len(distance_matrix)))
-
-        # Greedy selection
-        while len(selected_points) < min(n, len(self.observations)):
+        
+        while len(selected_points) < min(self.n, len(self.observations)):
             if not selected_points:
                 # Select the point with the maximum distance to any other point
                 current_point = max(remaining_points, key=lambda p: np.max(distance_matrix[p]))
@@ -135,7 +137,7 @@ class CureCluster:
                     distance = self.observations[i].GetDistanceTo(self.observations[j])
                     distance_matrix[i][j] = distance
                     distance_matrix[j][i] = distance 
-        indexes = self.__FindMostDispersedPoints(distance_matrix, self.n)
+        indexes = self.__FindMostDispersedPoints(distance_matrix)
         return [self.observations[index] for index in indexes]
     
     def AssignRepresentativePoints(self):
@@ -158,6 +160,7 @@ class CureCluster:
     def Merge(self, cluster, shrinkage_fraction: float):
         self.observations.extend(cluster.GetObservations())
         self.SetObservationClusters()
+        self.UpdateCentroid()
         self.representative_observations = self.__GetRepresentativePoints()
         self.ShrinkRepresentativeObservations(shrinkage_fraction)
         self.UpdateCentroid()
@@ -204,8 +207,9 @@ class CureClusterCollection:
                 min_distance = np.inf
                 min_cluster = None
                 for cluster in clusters:
-                    if cluster.GetDistanceToCentroid(observation) < min_distance:
-                        min_distance = cluster.GetDistanceToCentroid(observation)
+                    distance = cluster.GetDistanceToCentroid(observation)
+                    if distance < min_distance:
+                        min_distance = distance
                         min_cluster = cluster
                 min_cluster.AddObservation(observation)
             sum_centroid_change = 0
@@ -248,6 +252,7 @@ class CureClusterCollection:
         while True:
             all_representative_points = [p for cluster in self.clusters for p in cluster.GetRepresentativePoints()]
             distance_matrix = self.__GetRepresentativePointsDistanceMatrix(all_representative_points)
+            pdb.set_trace()
             i,j = np.unravel_index(distance_matrix.argmin(), distance_matrix.shape)
             if distance_matrix[i][j] < self.threshold:
                 yield all_representative_points[i].GetCluster(), all_representative_points[j].GetCluster()
@@ -258,7 +263,6 @@ class CureClusterCollection:
         return len(self.clusters)
     
     def Compute(self):
-        print("\n\nInitial Clusters", len(self.clusters))
         ## Assign Representative Points and clusters
         for cluster in self.clusters:
             cluster.SetObservationClusters()
@@ -267,16 +271,17 @@ class CureClusterCollection:
         for cluster, other_cluster in self.GetClustersToMerge():
             cluster.Merge(other_cluster, self.shrinkage_fraction)
             self.clusters.remove(other_cluster)
-        ## Add remaining observations
+        # Add remaining observations
         for observation, assigned_cluster in self.GetObservationsAndClustersToMerge():
             assigned_cluster.AddObservation(observation)
             
     def GetMostSimilarCluster(self, query_embedding: list[float]):
         min_distance = np.inf
-        similar_cluster = None
+        most_similar_cluster = None
         for cluster in self.clusters:
-            distance_to_query = cluster.GetDistanceToQuery(query_embedding)
-            if distance_to_query < min_distance:
-                min_distance = distance_to_query
-                similar_cluster = cluster
-        return similar_cluster
+            for representative_point in cluster.GetRepresentativePoints():
+                distance_to_query = representative_point.GetDistanceToQuery(query_embedding)
+                if distance_to_query < min_distance:
+                    min_distance = distance_to_query
+                    most_similar_cluster = cluster
+        return most_similar_cluster

@@ -11,18 +11,16 @@ data_handler = DataLoader(config)
 dataset = "fiqa"
 corpus, queries = data_handler.get_dataset(dataset)
 
-documents = corpus[:1000]
-print(documents[0])
+documents = corpus[:500]
 del corpus
-
 
 from models.CURE import CURE
 model = CURE(
     documents=documents,
-    n = 3,
+    n = 25,
     initial_clusters=10,
     shrinkage_fraction=0.05,
-    threshold=0.9,
+    threshold=0.5,
     model_name="sentence-transformers/multi-qa-mpnet-base-dot-v1"
 )
 
@@ -36,5 +34,5 @@ for i in range(len(queries)):
     print("DOC")
     print(sims[i][0].GetText())
     print("\n\n")
-    
+
 print("Num clusters", model.clusters.GetNumberOfClusters())
