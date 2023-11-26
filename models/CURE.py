@@ -6,6 +6,7 @@ import random
 import numpy as np
 import time
 import pdb
+from sklearn.cluster import AgglomerativeClustering
 from utils.distance_utils import GetSimilarity
 np.random.seed(1)
 
@@ -250,6 +251,35 @@ class CureClusterCollection:
         print("Created clusters using KMeans of sizes", " ".join([str(len(cluster.GetObservations())) for cluster in clusters]))
         return clusters
         
+    def __RunAgglomerativeClustering(self):
+        """ Run allgomerative clustering on subsample of observations
+        
+        Returns:
+            list[CureCluster]: List of clusters
+        """
+        subsample = random.choices(self.observations, k=int(len(self.observations)*self.subsample_fraction))
+        # Extract points from observations
+        points = np.array([obs.GetPoint().flatten() for obs in subsample])
+
+        # Perform Agglomerative Clustering
+        clustering = AgglomerativeClustering(n_clusters=self.initial_clusters, linkage="average", metric="cosine")
+        clustering.fit(points)
+        
+        # Extract cluster labels
+        cluster_labels = clustering.labels_
+
+        # Cluster dictionary to keep track of clusters
+        clusters = {}
+
+        for obs, label in zip(subsample, cluster_labels):
+            if label in clusters:
+                clusters[label].AddObservation(obs)
+            else:
+                clusters[label] = CureCluster(self.n, obs)
+            obs.SetCluster(clusters[label])
+
+        return list(clusters.values())
+
     def __RunKMeans(self):
         observations = np.random.choice(self.observations, size=int(len(self.observations)*self.subsample_fraction), replace=False)
         clusters = [CureCluster(self.n, observation, self.similarity_measure) for observation in np.random.choice(observations, size=self.initial_clusters, replace=False)]
