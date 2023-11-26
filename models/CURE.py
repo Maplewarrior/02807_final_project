@@ -1,6 +1,6 @@
 from data.embedding_document import EmbeddingDocument
 from models.builers.dense_retriever import DenseRetriever
-from transformers import BertModel, BertTokenizer
+# from transformers import BertModel, BertTokenizer
 import torch
 import random
 import numpy as np
@@ -13,7 +13,7 @@ class CURE(DenseRetriever):
     def __init__(self, 
                  documents: list[dict] = None, 
                  index_path: str = None, 
-                 model_name: str = 'bert-base-uncased', 
+                 model_name: str = "sentence-transformers/multi-qa-mpnet-base-dot-v1",
                  n: int = 2, 
                  initial_clusters: int = 10, 
                  shrinkage_fraction: float = 0.2, 
@@ -21,23 +21,41 @@ class CURE(DenseRetriever):
                  subsample_fraction: float = 0.5, 
                  batch_size: int = 5,
                  similarity_measure: str = "cosine") -> None:
-        self.tokenizer = BertTokenizer.from_pretrained(model_name)
-        self.model = BertModel.from_pretrained(model_name)
+        # self.tokenizer = BertTokenizer.from_pretrained(model_name)
+        # self.model = BertModel.from_pretrained(model_name)
         self.similarity_measure = similarity_measure
         super(CURE, self).__init__(documents, index_path, model_name, batch_size)
         start = time.time()
         self.clusters = self.__CreateClusters(n, initial_clusters, shrinkage_fraction, threshold, subsample_fraction, similarity_measure)
         end = time.time()
         print("\n\nTime", end-start, "\n\n")
-        
-    def EmbedQuery(self, query: str):
-        input_ids = self.tokenizer.encode(query, add_special_tokens=True, 
-                                            max_length=512, truncation=True)
-        input_ids = torch.tensor([input_ids])
-        with torch.no_grad():
-            last_hidden_states = self.model(input_ids)[0]
-        last_hidden_states = last_hidden_states.mean(1)
-        return last_hidden_states[0].numpy()
+        self.__CreateEmbeddingMatrices()        
+
+    # def EmbedQuery(self, query: str):
+    #     input_ids = self.tokenizer.encode(query, add_special_tokens=True, 
+    #                                         max_length=512, truncation=True)
+    #     input_ids = torch.tensor([input_ids])
+    #     with torch.no_grad():
+    #         last_hidden_states = self.model(input_ids)[0]
+    #     last_hidden_states = last_hidden_states.mean(1)
+    #     return last_hidden_states[0].numpy()
+
+    # def EmbedQueries(self, queries: list[str]):
+    #     """
+    #     Batched version of EmbedQuery
+    #         - Embeddings returned are normalized!
+    #     """
+    #     tokenized_queries = self.tokenizer(queries, add_special_tokens=True, 
+    #                                        padding=True, max_length=512, 
+    #                                        truncation=True, return_tensors='pt').to(self.device)
+    #     # model inference
+    #     with torch.no_grad():
+    #         last_hidden_states = self.model(**tokenized_queries)[0]
+    #     # average embedding over tokens
+    #     last_hidden_states = last_hidden_states.mean(1).cpu().numpy()
+    #     # Normalize embeddings
+    #     norms = np.linalg.norm(last_hidden_states, ord=2, axis=1)[:, None] # compute norms for batch and unsqueeze 2nd dim
+    #     return last_hidden_states / norms # returns [Batch_size x 768]
 
     def EmbedQueries(self, queries: list[str]):
         """
@@ -47,13 +65,17 @@ class CURE(DenseRetriever):
         tokenized_queries = self.tokenizer(queries, add_special_tokens=True, 
                                            padding=True, max_length=512, 
                                            truncation=True, return_tensors='pt').to(self.device)
+        
+        # dec_input_ids = self.tokenizer.batch_decode(tokenized_queries['input_ids']) # decode to ensure sentences are encoded correctly
         # model inference
+
         with torch.no_grad():
             last_hidden_states = self.model(**tokenized_queries)[0]
         # average embedding over tokens
-        last_hidden_states = last_hidden_states.mean(1).cpu().numpy()
+        last_hidden_states = last_hidden_states.mean(1)#.cpu().numpy()
         # Normalize embeddings
-        norms = np.linalg.norm(last_hidden_states, ord=2, axis=1)[:, None] # compute norms for batch and unsqueeze 2nd dim
+        norms = torch.linalg.norm(last_hidden_states, 2, dim=1, keepdim=False).unsqueeze(1) # NOTE: documentation says kwarg "ord" should be "p", but it thorws an error  
+        # norms = np.linalg.norm(last_hidden_states, ord=2, axis=1)[:, None] # compute norms for batch and unsqueeze 2nd dim
         return last_hidden_states / norms # returns [Batch_size x 768]
     
     def __CreateClusters(self, n: int, initial_clusters: int, shrinkage_fraction: float, threshold: float, subsample_fraction: float, similarity_measure: str):
@@ -61,11 +83,20 @@ class CURE(DenseRetriever):
         clusters.Compute()
         return clusters
     
+    def __CreateEmbeddingMatrices(self):
+        for cluster in self.clusters.clusters:
+            cluster.SetEmbeddingMatrix()
+            cluster.embedding_matrix = cluster.embedding_matrix.to(self.device)
+    
     def CalculateScores(self, queries: list[str]):
         query_embeddings = self.EmbedQueries(queries)
-        cluster_documents = [self.clusters.GetMostSimilarCluster(query_embedding).GetDocuments() for query_embedding in query_embeddings]
-        scores = [[self.InnerProduct(query_embedding, d.GetEmbedding()) for d in cluster_documents[i]] for i, query_embedding in enumerate(query_embeddings)]
-        return scores, cluster_documents
+        # cluster_documents = [self.clusters.GetMostSimilarCluster(query_embedding).GetDocuments() for query_embedding in query_embeddings]
+        # most_similar_cluster = [self.clusters.GetMostSimilarCluster(query_embedding).GetDocuments() for query_embedding in query_embeddings]
+        # scores = [[self.InnerProduct(query_embedding, d.GetEmbedding()) for d in cluster_documents[i]] for i, query_embedding in enumerate(query_embeddings)]
+        # return scores, cluster_documents
+        most_similar_clusters = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy()) for query_embedding in query_embeddings]
+        scores = [self.InnerProduct(query_embedding, most_similar_clusters[i].embedding_matrix).cpu() for i, query_embedding in enumerate(query_embeddings)]
+        return scores, [c.GetDocuments() for c in most_similar_clusters]
     
     def Lookup(self, queries: list[str], k: int):
         """
@@ -195,6 +226,10 @@ class CureCluster:
     
     def GetDocuments(self):
         return [observation.GetDocument() for observation in self.observations]
+    
+    def SetEmbeddingMatrix(self):
+        emb_matrix = [torch.from_numpy(doc.GetEmbedding()) for doc in self.GetDocuments()]
+        self.embedding_matrix = torch.cat(emb_matrix, dim=1)
         
 class CureClusterCollection:
     def __init__(self, n: int, initial_clusters: int, threshold: float, subsample_fraction: float, shrinkage_fraction: float, documents: list[EmbeddingDocument], similarity_measure: str) -> None:

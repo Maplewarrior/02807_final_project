@@ -13,7 +13,7 @@ data_handler = DataLoader(config)
 dataset = "fiqa"
 corpus, queries = data_handler.get_dataset(dataset)
 
-documents = corpus[:1000]
+documents = corpus[:2500]
 del corpus
 
 from models.CURE import CURE
@@ -23,11 +23,10 @@ model = CURE(
     documents=documents,
     n = 25,
     initial_clusters=50,
-    shrinkage_fraction=0.15,
-    threshold=0.1,
+    shrinkage_fraction=0.1,
+    threshold=0.25,
     subsample_fraction = 0.5,
     similarity_measure="cosine"
-    # model_name="sentence-transformers/multi-qa-mpnet-base-dot-v1"
 )
 
 # random_docs = np.random.choice(documents, size=5, replace=False)

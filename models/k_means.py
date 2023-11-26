@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 class KMeans(DenseRetriever):
-    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = "sentence-transformers/multi-qa-mpnet-base-dot-v1", k: int = 10) -> None:        
+    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = "sentence-transformers/multi-qa-mpnet-base-dot-v1", k: int = 10) -> None:  
         super(KMeans, self).__init__(documents, index_path, model_name)
         print(f'KMeans running on: {self.device}')
         self.clusters = self.__CreateClusters(k)
@@ -52,14 +52,13 @@ class KMeans(DenseRetriever):
     
     def __CreateEmbeddingMatrices(self):
         for cluster in self.clusters.clusters:
-            cluster.GetEmbeddingMatrix()
+            cluster.SetEmbeddingMatrix()
             cluster.embedding_matrix = cluster.embedding_matrix.to(self.device)
         
     def CalculateScores(self, queries: list[str]):
         query_embeddings = self.EmbedQueries(queries)
         most_similar_cluster = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy()) for query_embedding in query_embeddings]
         scores = [self.InnerProduct(query_embeddings, c.embedding_matrix).cpu() for c in most_similar_cluster]
-        print(f"QE device: {query_embeddings.device}\nEmb matrix device: {most_similar_cluster[0].embedding_matrix.device}")
         scores = [score.tolist() for score in scores]
         return scores, [c.GetDocuments() for c in most_similar_cluster]
     
@@ -156,6 +155,6 @@ class Cluster:
     def GetDocuments(self):
         return self.documents
     
-    def GetEmbeddingMatrix(self):
+    def SetEmbeddingMatrix(self):
         emb_matrix = [torch.from_numpy(document.GetEmbedding()) for document in self.documents]
         self.embedding_matrix = torch.cat(emb_matrix, dim=1)
