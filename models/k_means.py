@@ -39,7 +39,6 @@ class KMeans(DenseRetriever):
         if k <= len(self.index.GetDocuments()):
             clusters = ClusterCollection(k, self.index.GetDocuments())
             prev_error = np.inf
-            # tol = 1e-02
             tol = 1e-02
             while np.abs(clusters.GetError() - prev_error) > tol:
                 clusters.AssignDocuments()
