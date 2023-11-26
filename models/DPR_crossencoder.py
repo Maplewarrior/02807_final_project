@@ -2,7 +2,7 @@ from models.DPR import DPR
 from sentence_transformers import CrossEncoder
 
 class DPRCrossencoder(DPR):
-    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = "cross-encoder/stsb-TinyBERT-L-4", n: int = 25) -> None:
+    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = "cross-encoder/ms-marco-TinyBERT-L-2-v2", n: int = 25) -> None:
         super(DPRCrossencoder, self).__init__(documents, index_path)
         self.crossencoder = CrossEncoder(model_name, device=self.device)
         self.n = n

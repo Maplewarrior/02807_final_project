@@ -19,7 +19,7 @@ def calculateReciprocalRank(relevancies):
 
 def calculateRPrecision(relevancies, query):
     n_relevant = query.getNumberOfRelevantDocuments()
-    return sum(relevancies[:n_relevant]) / min(len(relevancies, n_relevant))
+    return sum(relevancies[:n_relevant]) / min(len(relevancies), n_relevant)
 
 def calculateRecall(relevancies, query: Query):
     return sum(relevancies) / min(len(relevancies), query.getNumberOfRelevantDocuments())
