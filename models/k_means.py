@@ -6,8 +6,8 @@ import numpy as np
 import torch
 
 class KMeans(DenseRetriever):
-    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = "sentence-transformers/multi-qa-mpnet-base-dot-v1", k: int = 10) -> None:  
-        super(KMeans, self).__init__(documents, index_path, model_name)
+    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = "sentence-transformers/multi-qa-mpnet-base-dot-v1", k: int = 10, batch_size: int = None) -> None:  
+        super(KMeans, self).__init__(documents, index_path, model_name, batch_size)
         print(f'KMeans running on: {self.device}')
         self.clusters = self.__CreateClusters(k)
         print('Creating embedding matrices for clusters!')
@@ -57,10 +57,14 @@ class KMeans(DenseRetriever):
         
     def CalculateScores(self, queries: list[str]):
         query_embeddings = self.EmbedQueries(queries)
-        most_similar_cluster = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy()) for query_embedding in query_embeddings]
-        scores = [self.InnerProduct(query_embeddings, c.embedding_matrix).cpu() for c in most_similar_cluster]
+        # most_similar_cluster = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy()) for query_embedding in query_embeddings]
+        # scores = [self.InnerProduct(query_embeddings, c.embedding_matrix).cpu() for c in most_similar_cluster]
+        most_similar_clusters = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy()) for query_embedding in query_embeddings]
+        scores = [self.InnerProduct(query_embedding, most_similar_clusters[i].embedding_matrix).cpu() for i, query_embedding in enumerate(query_embeddings)]
         scores = [score.tolist() for score in scores]
-        return scores, [c.GetDocuments() for c in most_similar_cluster]
+        for score in scores:
+            print("SCORE", score)
+        return scores, [c.GetDocuments() for c in most_similar_clusters]
     
     def Lookup(self, queries: list[str], k: int):
         """
