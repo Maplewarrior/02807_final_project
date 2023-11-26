@@ -57,13 +57,9 @@ class KMeans(DenseRetriever):
         
     def CalculateScores(self, queries: list[str]):
         query_embeddings = self.EmbedQueries(queries)
-        # most_similar_cluster = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy()) for query_embedding in query_embeddings]
-        # scores = [self.InnerProduct(query_embeddings, c.embedding_matrix).cpu() for c in most_similar_cluster]
         most_similar_clusters = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy()) for query_embedding in query_embeddings]
         scores = [self.InnerProduct(query_embedding, most_similar_clusters[i].embedding_matrix).cpu() for i, query_embedding in enumerate(query_embeddings)]
         scores = [score.tolist() for score in scores]
-        for score in scores:
-            print("SCORE", score)
         return scores, [c.GetDocuments() for c in most_similar_clusters]
     
     def Lookup(self, queries: list[str], k: int):

@@ -20,22 +20,22 @@ documents = np.random.choice(corpus, size=100, replace=False)
 del corpus
 
 
-# model = CURE(
-#     documents=documents,
-#     n = 25,
-#     initial_clusters=25,
-#     shrinkage_fraction=0.1,
-#     threshold=0.35,
-#     subsample_fraction = 0.5,
-#     similarity_measure="cosine",
-#     initial_clustering_algorithm="agglomerative",
-# )
-
-model = KMeans(
-    documents = documents,
-    k=5,
-    batch_size = 5,
+model = CURE(
+    documents=documents,
+    n = 25,
+    initial_clusters=25,
+    shrinkage_fraction=0.1,
+    threshold=0.35,
+    subsample_fraction = 0.5,
+    similarity_measure="cosine",
+    initial_clustering_algorithm="agglomerative",
 )
+
+# model = KMeans(
+#     documents = documents,
+#     k=5,
+#     batch_size = 5,
+# )
 
 random_docs = np.random.choice(documents, size=5, replace=False)
 queries = [rand_doc["text"] for rand_doc in random_docs]
@@ -50,6 +50,6 @@ for i in range(len(queries)):
     print(sims[i][0].GetText())
     print("\n\n")
 
-# print("Num clusters", model.clusters.GetNumberOfClusters())
-# print("Cluster dist.", [len(cluster.observations) for cluster in model.clusters.clusters])
+print("Num clusters", model.clusters.GetNumberOfClusters())
+print("Cluster dist.", [len(cluster.observations) for cluster in model.clusters.clusters])
 pdb.set_trace()

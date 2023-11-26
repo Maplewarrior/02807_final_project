@@ -91,22 +91,29 @@ class CURE(DenseRetriever):
             cluster.SetEmbeddingMatrix()
             cluster.embedding_matrix = cluster.embedding_matrix.to(self.device)
     
-    def CalculateScores(self, queries: list[str]):
+    def CalculateScores(self, queries: list[str], k: int):
         query_embeddings = self.EmbedQueries(queries)
-        # cluster_documents = [self.clusters.GetMostSimilarCluster(query_embedding).GetDocuments() for query_embedding in query_embeddings]
-        # most_similar_cluster = [self.clusters.GetMostSimilarCluster(query_embedding).GetDocuments() for query_embedding in query_embeddings]
-        # scores = [[self.InnerProduct(query_embedding, d.GetEmbedding()) for d in cluster_documents[i]] for i, query_embedding in enumerate(query_embeddings)]
-        # return scores, cluster_documents
-        most_similar_clusters = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy()) for query_embedding in query_embeddings]
-        scores = [self.InnerProduct(query_embedding, most_similar_clusters[i].embedding_matrix).cpu() for i, query_embedding in enumerate(query_embeddings)]
-        return scores, [c.GetDocuments() for c in most_similar_clusters]
+        most_similar_clusters = [self.clusters.GetMostSimilarCluster(query_embedding.cpu().numpy(), k) for query_embedding in query_embeddings]
+        scores = []
+        all_documents = []
+        for i,query_embedding in enumerate(query_embeddings):
+            score = []
+            documents = []
+            for most_similar_cluster in most_similar_clusters[i]:
+                score.extend(self.InnerProduct(query_embedding, most_similar_cluster.embedding_matrix).cpu())
+                documents.extend(most_similar_cluster.GetDocuments())
+            scores.append(score)
+            all_documents.append(documents)
+        # scores = [self.InnerProduct(query_embedding, most_similar_clusters[i].embedding_matrix).cpu() for i, query_embedding in enumerate(query_embeddings)]
+        return scores, all_documents
+        # return scores, [c.GetDocuments() for c in most_similar_clusters]
     
     def Lookup(self, queries: list[str], k: int):
         """
         @param query: The input text to which relevant passages should be found.
         @param k: The number of relevant passages to retrieve.
         """
-        scores, cluster_documents = self.CalculateScores(queries)
+        scores, cluster_documents = self.CalculateScores(queries, k)
         score_document_pairs = [list(zip(scores[i], cluster_documents[i])) for i in range(len(queries))]
         ranked_documents_batch = [[d for _, d in sorted(pairs, key=lambda pair: pair[0], reverse=True)] for pairs in score_document_pairs]
         return [ranked_documents[:min(k, len(ranked_documents))] for ranked_documents in ranked_documents_batch]
@@ -364,13 +371,20 @@ class CureClusterCollection:
         for observation, assigned_cluster in self.GetObservationsAndClustersToMerge():
             assigned_cluster.AddObservation(observation)
     
-    def GetMostSimilarCluster(self, query_embedding: list[float]):
-        min_distance = np.inf
-        most_similar_cluster = None
-        for cluster in self.clusters:
-            for representative_point in cluster.GetRepresentativePoints():
-                distance_to_query = representative_point.GetDistanceToQuery(query_embedding)
-                if distance_to_query < min_distance:
-                    min_distance = distance_to_query
-                    most_similar_cluster = cluster
-        return most_similar_cluster
+    def GetMostSimilarCluster(self, query_embedding: list[float], k: int):
+        num_docs_in_clusters = 0
+        cluster_to_return = []
+        
+        while num_docs_in_clusters < k:
+            min_distance = np.inf
+            most_similar_cluster = None
+            for cluster in self.clusters:
+                if not cluster in cluster_to_return:
+                    for representative_point in cluster.GetRepresentativePoints():
+                        distance_to_query = representative_point.GetDistanceToQuery(query_embedding)
+                        if distance_to_query < min_distance:
+                            min_distance = distance_to_query
+                            most_similar_cluster = cluster
+            cluster_to_return.append(most_similar_cluster)
+            num_docs_in_clusters += len(most_similar_cluster.GetDocuments())
+        return cluster_to_return
