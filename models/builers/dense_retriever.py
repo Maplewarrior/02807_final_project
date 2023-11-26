@@ -2,8 +2,6 @@ import torch
 from abc import ABC, abstractmethod
 from data.embedding_dataset import EmbeddingDataset
 from models.builers.retriever import Retriever
-# from transformers import BertModel, BertTokenizer
-from transformers import MPNetTokenizer, MPNetModel
 from utils.misc import time_func, batch
 import numpy as np
 
@@ -27,8 +25,14 @@ class DenseRetriever(Retriever, ABC):
         print("Initializing retrieval model!")
         # self.tokenizer = BertTokenizer.from_pretrained(model_name)
         # self.model = BertModel.from_pretrained(model_name).to(self.device)
-        self.tokenizer = MPNetTokenizer.from_pretrained(model_name)
-        self.model = MPNetModel.from_pretrained(model_name).to(self.device)
+        if "bert" in model_name:
+            from transformers import BertModel, BertTokenizer
+            self.tokenizer = BertTokenizer.from_pretrained(model_name)
+            self.model = BertModel.from_pretrained(model_name).to(self.device)
+        else:
+            from transformers import MPNetTokenizer, MPNetModel
+            self.tokenizer = MPNetTokenizer.from_pretrained(model_name)
+            self.model = MPNetModel.from_pretrained(model_name).to(self.device)
         self.model.eval()
 
     @time_func

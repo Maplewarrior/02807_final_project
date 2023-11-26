@@ -6,14 +6,27 @@ import random
 import numpy as np
 import time
 import pdb
+from utils.distance_utils import GetSimilarity
+np.random.seed(1)
 
 class CURE(DenseRetriever):
-    def __init__(self, documents: list[dict] = None, index_path: str = None, model_name: str = 'bert-base-uncased', n: int = 2, initial_clusters: int = 10, shrinkage_fraction: float = 0.2, threshold: float = 1, subsample_fraction: float = 0.5, batch_size: int = 5) -> None:
+    def __init__(self, 
+                 documents: list[dict] = None, 
+                 index_path: str = None, 
+                 model_name: str = 'bert-base-uncased', 
+                 n: int = 2, 
+                 initial_clusters: int = 10, 
+                 shrinkage_fraction: float = 0.2, 
+                 threshold: float = 1, 
+                 subsample_fraction: float = 0.5, 
+                 batch_size: int = 5,
+                 similarity_measure: str = "cosine") -> None:
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
         self.model = BertModel.from_pretrained(model_name)
+        self.similarity_measure = similarity_measure
         super(CURE, self).__init__(documents, index_path, model_name, batch_size)
         start = time.time()
-        self.clusters = self.__CreateClusters(n, initial_clusters, shrinkage_fraction, threshold, subsample_fraction)
+        self.clusters = self.__CreateClusters(n, initial_clusters, shrinkage_fraction, threshold, subsample_fraction, similarity_measure)
         end = time.time()
         print("\n\nTime", end-start, "\n\n")
         
@@ -43,8 +56,8 @@ class CURE(DenseRetriever):
         norms = np.linalg.norm(last_hidden_states, ord=2, axis=1)[:, None] # compute norms for batch and unsqueeze 2nd dim
         return last_hidden_states / norms # returns [Batch_size x 768]
     
-    def __CreateClusters(self, n: int, initial_clusters: int, shrinkage_fraction: float, threshold: float, subsample_fraction: float):
-        clusters = CureClusterCollection(n, initial_clusters, threshold, subsample_fraction, shrinkage_fraction, self.index.GetDocuments())
+    def __CreateClusters(self, n: int, initial_clusters: int, shrinkage_fraction: float, threshold: float, subsample_fraction: float, similarity_measure: str):
+        clusters = CureClusterCollection(n, initial_clusters, threshold, subsample_fraction, shrinkage_fraction, self.index.GetDocuments(), similarity_measure)
         clusters.Compute()
         return clusters
     
@@ -65,10 +78,11 @@ class CURE(DenseRetriever):
         return [ranked_documents[:min(k, len(ranked_documents))] for ranked_documents in ranked_documents_batch]
     
 class CureObservation:
-    def __init__(self, document: EmbeddingDocument) -> None:
+    def __init__(self, document: EmbeddingDocument, similarity_measure: str) -> None:
         self.document = document
         self.embedding = document.GetEmbedding()
         self.cluster = None
+        self.similarity_measure = similarity_measure
         
     def SetCluster(self, cluster):
         self.cluster = cluster
@@ -83,17 +97,18 @@ class CureObservation:
         self.embedding = self.embedding + ((centroid - self.GetPoint()) * shrinkage_fraction)
         
     def GetDistanceTo(self, observation):
-        return np.sum((observation.GetPoint()-self.GetPoint())**2)
+        return GetSimilarity(observation.GetPoint(), self.GetPoint(), self.similarity_measure)
     
     def GetDistanceToQuery(self, observation):
-        return np.sum((observation-self.GetPoint())**2)
+        return GetSimilarity(observation, self.GetPoint(), self.similarity_measure)
     
     def GetDocument(self):
         return self.document
 
 class CureCluster:
-    def __init__(self, n: int, observation: CureObservation) -> None:
+    def __init__(self, n: int, observation: CureObservation, similarity_measure) -> None:
         self.observations = [observation]
+        self.similarity_measure = similarity_measure
         self.centroid = observation.GetPoint()
         observation.SetCluster(self)
         self.n = n # representative points
@@ -110,6 +125,8 @@ class CureCluster:
         observation.SetCluster(self)
         
     def RemoveObservations(self):
+        for observation in self.observations:
+            observation.SetCluster(None)
         self.observations = []
     
     def __FindMostDispersedPoints(self, distance_matrix):
@@ -163,10 +180,9 @@ class CureCluster:
         self.UpdateCentroid()
         self.representative_observations = self.__GetRepresentativePoints()
         self.ShrinkRepresentativeObservations(shrinkage_fraction)
-        self.UpdateCentroid()
         
     def GetDistanceToCentroid(self, observation: CureObservation):
-        return np.sum((observation.GetPoint()-self.centroid)**2)
+        return GetSimilarity(observation.GetPoint(), self.centroid, self.similarity_measure)
         
     def GetError(self):
         error = 0
@@ -175,30 +191,33 @@ class CureCluster:
         return error
     
     def GetDistanceToQuery(self, query_embedding: list[float]):
-        return np.sum((query_embedding-self.centroid)**2)
+        return GetSimilarity(query_embedding, self.centroid, self.similarity_measure)
     
     def GetDocuments(self):
         return [observation.GetDocument() for observation in self.observations]
         
 class CureClusterCollection:
-    def __init__(self, n: int, initial_clusters: int, threshold: float, subsample_fraction: float, shrinkage_fraction: float, documents: list[EmbeddingDocument]) -> None:
+    def __init__(self, n: int, initial_clusters: int, threshold: float, subsample_fraction: float, shrinkage_fraction: float, documents: list[EmbeddingDocument], similarity_measure: str) -> None:
         self.n = n # Representative points
         self.initial_clusters = initial_clusters
         self.subsample_fraction = subsample_fraction
         self.threshold = threshold # Threshold for merging
         self.shrinkage_fraction = shrinkage_fraction
+        self.similarity_measure = similarity_measure
         self.observations = self.__InitializeObservations(documents)
         self.clusters = self.__InitializeClusters()
         
     def __InitializeObservations(self, documents: list[EmbeddingDocument]):
-        return [CureObservation(document) for document in documents]
+        return [CureObservation(document, self.similarity_measure) for document in documents]
     
     def __InitializeClusters(self):
-        return self.__RunKMeans()
+        clusters = self.__RunKMeans()
+        print("Created clusters using KMeans of sizes", " ".join([str(len(cluster.GetObservations())) for cluster in clusters]))
+        return clusters
         
     def __RunKMeans(self):
-        observations = random.choices(self.observations, k=int(len(self.observations)*self.subsample_fraction))
-        clusters = [CureCluster(self.n, observation) for observation in random.choices(observations, k=self.initial_clusters)]
+        observations = np.random.choice(self.observations, size=int(len(self.observations)*self.subsample_fraction), replace=False)
+        clusters = [CureCluster(self.n, observation, self.similarity_measure) for observation in np.random.choice(observations, size=self.initial_clusters, replace=False)]
         sum_centroid_change = 1
         while sum_centroid_change > 1e-02:
             for cluster in clusters:
@@ -233,8 +252,9 @@ class CureClusterCollection:
                 assigned_cluster = None
                 for cluster in self.clusters:
                     for representative_point in cluster.GetRepresentativePoints():
-                        if observation.GetDistanceTo(representative_point) < min_distance:
-                            min_distance = observation.GetDistanceTo(representative_point)
+                        distance = observation.GetDistanceTo(representative_point)
+                        if distance < min_distance:
+                            min_distance = distance
                             assigned_cluster = cluster
                 yield observation, assigned_cluster
             
@@ -252,7 +272,6 @@ class CureClusterCollection:
         while True:
             all_representative_points = [p for cluster in self.clusters for p in cluster.GetRepresentativePoints()]
             distance_matrix = self.__GetRepresentativePointsDistanceMatrix(all_representative_points)
-            pdb.set_trace()
             i,j = np.unravel_index(distance_matrix.argmin(), distance_matrix.shape)
             if distance_matrix[i][j] < self.threshold:
                 yield all_representative_points[i].GetCluster(), all_representative_points[j].GetCluster()
@@ -265,8 +284,8 @@ class CureClusterCollection:
     def Compute(self):
         ## Assign Representative Points and clusters
         for cluster in self.clusters:
-            cluster.SetObservationClusters()
             cluster.AssignRepresentativePoints()
+            cluster.ShrinkRepresentativeObservations(self.shrinkage_fraction)
         ## Merging clusters
         for cluster, other_cluster in self.GetClustersToMerge():
             cluster.Merge(other_cluster, self.shrinkage_fraction)
