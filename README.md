@@ -36,11 +36,14 @@ python -m pip install -r requirements.txt
 > [!IMPORTANT]
 > On macos the requirement of `pywin32` does not exist and should be commented out directly in the `requirements.txt` file.
 
+### Testing models on FiQA 2018 benchmark
 Once the environment is setup, run the main experiments, the `run_experiments.ipynb` is used and should simply be run through.
+
+We have made a script to download the dataset automatically from the [BEIR Project]([https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/fiqa.zip](https://github.com/beir-cellar/beir)) which means you only need to run the notebook.
 
 > [!TIP]
 > This is very memory intensive, and as mentioned has been run on a GPU. To skip building models and indexes yourself you can download *our* prebuilt from [this Google Drive](https://drive.google.com/drive/folders/13jPojmVvgFjntUt7AwJRSBcBQxO_-FxV).
-> These can me place in the `models/pickled_models`.
+> These can be placed in the `models/pickled_models`.
 > The final directory structure should look the following: (it will look like this after you run the code without prebuilt)
 > ```
 > ├── configs
@@ -72,7 +75,8 @@ Once the environment is setup, run the main experiments, the `run_experiments.ip
 > └── ...
 > ```
 
-
+### Testing models on phishing data
+First, download the dataset from [Kaggle](https://www.kaggle.com/datasets/subhajournal/phishingemails).
 
 
 
