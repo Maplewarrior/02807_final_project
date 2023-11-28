@@ -8,7 +8,7 @@ import time
 import pdb
 from sklearn.cluster import AgglomerativeClustering
 from utils.distance_utils import GetSimilarity
-np.random.seed(2)
+# np.random.seed(2)
 
 class CURE(DenseRetriever):
     def __init__(self, 
