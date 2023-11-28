@@ -165,7 +165,7 @@ It should look as follows:
 > We have not provided it in the repo as it is not ours and we do not have permission to distribute it.
 
 #### Running the experiments
-To run the experiments, just run the notebook `run_experiments.ipynb`.
+To run the experiments, just run the notebook `phishing_notebook.ipynb`.
 
 
 Again, experiment configurations can be changed in the _Define Experiment Configuration_ code block. We ran the experiments with the following settings:
