@@ -52,7 +52,7 @@ python -m pip install -r requirements.txt
 
 ### (Optional) Using prebuilt models and indices
 > [!WARNING]
-> Be aware that the models are large which means that running the experiments on the CPU will still require a bit of memory. We are not able to load all the models on a Surface Laptop 3 with 8 GB RAM and an `Intel(R) Core(TM) i5-1035G7 CPU @ 1.20GHz`
+> Be aware that the models are large which means that running the experiments on the CPU will still require a bit of memory. We are not able to load all the models on a Surface Laptop 3 with 8 GB RAM and an `Intel(R) Core(TM) i5-1035G7 CPU @ 1.20GHz`. Even with prebuilt data
 
 As building the models and indices can be very time-consuming, especially on a CPU, we have precomputed these and uploaded them to [Google Drive](https://drive.google.com/drive/folders/13jPojmVvgFjntUt7AwJRSBcBQxO_-FxV).
 Models should be placed in models/pickled_models and indices should be placed in indexes with subfolders as shown below:
