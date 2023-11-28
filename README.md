@@ -51,7 +51,10 @@ python -m pip install -r requirements.txt
 > On MacOS the requirement of `pywin32` does not exist and should be commented out directly in the `requirements.txt` file.
 
 ### (Optional) Using prebuilt models and indices
-As building the models and indices can be very time consuming especially on a CPU, we have precomputed these and uploaded them to [Google Drive](https://drive.google.com/drive/folders/13jPojmVvgFjntUt7AwJRSBcBQxO_-FxV).
+> [!WARNING]
+> Be aware that the models are large which means that running the experiments on the CPU will still require a bit of memory. We are not able to load all the models on a Surface Laptop 3 with 8 GB RAM and an `Intel(R) Core(TM) i5-1035G7 CPU @ 1.20GHz`
+
+As building the models and indices can be very time-consuming, especially on a CPU, we have precomputed these and uploaded them to [Google Drive](https://drive.google.com/drive/folders/13jPojmVvgFjntUt7AwJRSBcBQxO_-FxV).
 Models should be placed in models/pickled_models and indices should be placed in indexes with subfolders as shown below:
 ```
 ├── configs
