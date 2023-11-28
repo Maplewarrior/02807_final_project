@@ -2,7 +2,7 @@
 Final project code base for [02807 Computational Tools for Data Science](http://courses.compute.dtu.dk/02807/2023/).
 
 Contributors:
-- [s204125 Andreas Lyhne](https://github.com/AndreasLF)
+- [s204125 Andreas Fiehn](https://github.com/AndreasLF)
 - [s204138 Michael Harborg](https://github.com/Maplewarrior)
 - [s204139 August Tollerup](https://github.com/4ug-aug)
 - [s200925 Andreas Bigom](https://github.com/AndreasBigom)
