@@ -38,7 +38,7 @@ This indicates, that the performances of the compared methods are highly depende
 > [!NOTE]
 > All results in this project are produced using an RTX 4070 on [Python 3.9.13](https://www.python.org/downloads/release/python-3913/) and it is recommended to run this with a GPU and CUDA available.
 
-To execute the experiments run in this project two notebooks are presented: `run_experiments.ipynb` and ``phishing_notebook``.
+To execute the experiments run in this project two notebooks are presented: `run_experiments.ipynb` and ``phishing_notebook.ipynb``.
 Firstly, clone the repository:
 ```bash
 git clone https://github.com/Maplewarrior/02807_final_project.git
