@@ -22,3 +22,14 @@ This indicates, that the performances of the compared methods are highly depende
 
 ## Reproducing results
 To execute the experiments run in this project two notebooks are presented: **run_experiments.ipynb** and **phishing_notebook**.
+Firstly, clone the repository:
+```bash
+git clone https://github.com/Maplewarrior/02807_final_project.git
+```
+Then, in the root directory of the project, create a virtual env of your choice and/or install `requirements.txt`:
+```bash
+python -m pip install -r requirements.txt
+```
+[!IMPORTANT]
+On macos the requirement of `pywin32` does not exist and should be commented out directly in the `requirements.txt` file.
+
