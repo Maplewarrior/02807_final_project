@@ -36,6 +36,38 @@ python -m pip install -r requirements.txt
 > [!IMPORTANT]
 > On macos the requirement of `pywin32` does not exist and should be commented out directly in the `requirements.txt` file.
 
+Once the environment is setup, download the folders, `models` and `indexes` from [this Google Drive](https://drive.google.com/drive/folders/13jPojmVvgFjntUt7AwJRSBcBQxO_-FxV).
+Place them in the `models/pickled_models`. The final directory structure should look like this:
+```
+├── configs
+│   ├── ...
+├── data
+│   ├── ...
+├── indexes
+│   ├── fiqa
+│   │   ├── embedding_index.pickle  <------ These are important
+│   ├── phishing
+│   │   ├── embedding_index.pickle  <------ These are important
+├── models
+│   ├── builders
+│   │   ├── ...
+│   ├── pickled_models
+│   │   ├── fiqa
+│   │   │   ├── BM25.pickle        <------ These are important
+│   │   │   ├── TF-IDF.pickle      <------ These are important
+│   │   │   ├── ...                <------ These are important
+│   │   ├── phishing
+│   │   │   ├── BM25.pickle        <------ These are important
+│   │   │   ├── TF-IDF.pickle      <------ These are important
+│   │   │   ├── ...                <------ These are important
+│   ├── ...
+├── old_code
+│   ├── ...
+├── utils
+│   ├── ...
+└── ...
+```
+
 To run the main experiments, the `run_experiments.ipynb` is used and should simply be run through.
 
 
