@@ -36,39 +36,47 @@ python -m pip install -r requirements.txt
 > [!IMPORTANT]
 > On macos the requirement of `pywin32` does not exist and should be commented out directly in the `requirements.txt` file.
 
-Once the environment is setup, download the folders, `models` and `indexes` from [this Google Drive](https://drive.google.com/drive/folders/13jPojmVvgFjntUt7AwJRSBcBQxO_-FxV).
-Place them in the `models/pickled_models`. The final directory structure should look like this:
-```
-├── configs
-│   ├── ...
-├── data
-│   ├── ...
-├── indexes
-│   ├── fiqa
-│   │   ├── embedding_index.pickle  <------ These are important
-│   ├── phishing
-│   │   ├── embedding_index.pickle  <------ These are important
-├── models
-│   ├── builders
-│   │   ├── ...
-│   ├── pickled_models
-│   │   ├── fiqa
-│   │   │   ├── BM25.pickle        <------ These are important
-│   │   │   ├── TF-IDF.pickle      <------ These are important
-│   │   │   ├── ...                <------ These are important
-│   │   ├── phishing
-│   │   │   ├── BM25.pickle        <------ These are important
-│   │   │   ├── TF-IDF.pickle      <------ These are important
-│   │   │   ├── ...                <------ These are important
-│   ├── ...
-├── old_code
-│   ├── ...
-├── utils
-│   ├── ...
-└── ...
-```
+### Testing models on FiQA 2018 benchmark
+Once the environment is setup, run the main experiments, the `run_experiments.ipynb` is used and should simply be run through.
 
-To run the main experiments, the `run_experiments.ipynb` is used and should simply be run through.
+We have made a script to download the dataset automatically from the [BEIR Project]([https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/fiqa.zip](https://github.com/beir-cellar/beir)) which means you only need to run the notebook.
+
+> [!TIP]
+> This is very memory intensive, and as mentioned has been run on a GPU. To skip building models and indexes yourself you can download *our* prebuilt from [this Google Drive](https://drive.google.com/drive/folders/13jPojmVvgFjntUt7AwJRSBcBQxO_-FxV).
+> These can be placed in the `models/pickled_models`.
+> The final directory structure should look the following: (it will look like this after you run the code without prebuilt)
+> ```
+> ├── configs
+> │   ├── ...
+> ├── data
+> │   ├── ...
+> ├── indexes
+> │   ├── fiqa
+> │   │   ├── embedding_index.pickle  <------ Place prebuilt indexes here
+> │   ├── phishing
+> │   │   ├── embedding_index.pickle  <------ Place prebuilt indexes here
+> ├── models
+> │   ├── builders
+> │   │   ├── ...
+> │   ├── pickled_models
+> │   │   ├── fiqa
+> │   │   │   ├── BM25.pickle        <------ Place prebuilt model here
+> │   │   │   ├── TF-IDF.pickle      <------ Place prebuilt model here
+> │   │   │   ├── ...                <------ Place prebuilt model here
+> │   │   ├── phishing
+> │   │   │   ├── BM25.pickle        <------ Place prebuilt model here
+> │   │   │   ├── TF-IDF.pickle      <------ Place prebuilt model here
+> │   │   │   ├── ...                <------ Place prebuilt model here
+> │   ├── ...
+> ├── old_code
+> │   ├── ...
+> ├── utils
+> │   ├── ...
+> └── ...
+> ```
+
+### Testing models on phishing data
+First, download the dataset from [Kaggle](https://www.kaggle.com/datasets/subhajournal/phishingemails).
 
 
 
