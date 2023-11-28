@@ -21,7 +21,10 @@ The primary findings of this report were that embedding-based methods were super
 This indicates, that the performances of the compared methods are highly dependent on the domain of the problem. Lastly, it was evident that a favorable running time when employing KMeans and CURE came at a cost of considerably degraded performance in both cases.
 
 ## Reproducing results
-To execute the experiments run in this project two notebooks are presented: **run_experiments.ipynb** and **phishing_notebook**.
+> [!IMPORTANT]
+> All results in this project are produced using an RTX 4070 and it is recommended to run this with a GPU and CUDA available.
+
+To execute the experiments run in this project two notebooks are presented: `run_experiments.ipynb` and ``phishing_notebook``.
 Firstly, clone the repository:
 ```bash
 git clone https://github.com/Maplewarrior/02807_final_project.git
@@ -32,6 +35,9 @@ python -m pip install -r requirements.txt
 ```
 > [!IMPORTANT]
 > On macos the requirement of `pywin32` does not exist and should be commented out directly in the `requirements.txt` file.
+
+To run the main experiments, the `run_experiments.ipynb` is used and should simply be run through.
+
 
 
 
