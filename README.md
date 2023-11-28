@@ -30,6 +30,8 @@ Then, in the root directory of the project, create a virtual env of your choice 
 ```bash
 python -m pip install -r requirements.txt
 ```
-[!IMPORTANT]
-On macos the requirement of `pywin32` does not exist and should be commented out directly in the `requirements.txt` file.
+> [!IMPORTANT]
+> On macos the requirement of `pywin32` does not exist and should be commented out directly in the `requirements.txt` file.
+
+
 
