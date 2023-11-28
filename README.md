@@ -43,7 +43,7 @@ Firstly, clone the repository:
 ```bash
 git clone https://github.com/Maplewarrior/02807_final_project.git
 ```
-Then, in the root directory of the project, create a virtual env of your choice and install `requirements.txt`:
+Then, in the root directory of the project, create a [virtual env](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/) of your choice and install `requirements.txt`:
 ```bash
 python -m pip install -r requirements.txt
 ```
