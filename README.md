@@ -113,7 +113,7 @@ Whether downloading it manually or relying on the script integrated into the not
 └── ...
 ```
 
-#### Running the experiment
+#### Running the experiments
 Just run `run_experiments.ipynb`. Easy! 
 You can change the experiment configurations in the _Define Experiment Configuration_ code block. We ran the experiments with the following settings:
 
@@ -175,7 +175,7 @@ config = configparser.ConfigParser()
 config.read('configs/config.ini')
 data_loader = DataLoader(config)
 
-top_k = 5
+top_k = 25
 test_split = 0.2
 batch_size=25
 
@@ -185,10 +185,10 @@ model_descriptions = {
         "DPR": {},
         "Crossencoder": {"n":2*top_k},
         "KMeans": {"k":3},
-        "CURE": {"n": 2,
+        "CURE": {"n": 25,
                 "shrinkage_fraction" : 0.1,
                 "threshold": 0.25,
-                "initial_clusters": 5,
+                "initial_clusters": 50,
                 "subsample_fraction": 0.5,
                 "similarity_measure": "cosine"}}
 
